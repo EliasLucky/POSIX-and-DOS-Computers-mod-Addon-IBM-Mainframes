@@ -28,6 +28,10 @@ public class MainframeKernel implements Kernel {
 	private final List<String> bootLog = new ArrayList<>();
 	private PeripheralBus bus;
 
+	private ChannelDevice cachedPrinter;
+	private boolean warnedNoPrinter = false;
+	private final List<String> orhpanOutput = new ArrayList<>();
+
 	public MainframeKernel() {
 		ProgramRegistry.register("FORT", new FortProgram());
 	}
@@ -37,6 +41,9 @@ public class MainframeKernel implements Kernel {
 		this.bus = bus;
 		devices.clear();
 		bootLog.clear();
+		cachedPrinter = null;
+		warnedNoPrinter = false;
+		orphanOutput.clear();
 
 		List<PeripheralAddress> found = bus.scan();
 		for (PeripheralAddress addr : found) {
@@ -196,17 +203,38 @@ public class MainframeKernel implements Kernel {
 
 	// --- Printer routing ---------------------------------------------------
 
-	private void writeToPrinter(String ddName, String record) {
-		ChannelDevice printer = devices.device("1403");
-		if (printer == null) {
-			// No printer: keep the message in the boot log so the
-			// operator still sees something.
-			// THIS IS A TEST AND NOT THE REAL LISTING.
-			bootLog.add("[SYSPRINT] " + record);
+	/**
+	 * Route one record to the 1403 printer. If no printer is on the channel, hold
+	 * the output in memory and warn the operator exactly once per boot.
+	 * The orphan buffer is readable via the OUTPUT operator command, so nothing is lost.
+	 */
+	private void writeToPrinter(String ddName, String record) { 
+		if (cachedPrinter == null) {
+			cachedPrinter = devices.device("1403");
+		}
+
+		if (cachedPrinter == null) {
+			orphanOutput.add("[" + ddName + "] " + record);
+			if (!warnedNoPrinter) {
+				warnedNoPrinter = true;
+				bootLog.add("IEE605W NO 1403 PRINTER CONFIGURED -- "
+					+ "LISTING HELD N MEMORY, USE 'OUTPUT' TO VIEW");
+			}
 			return;
 		}
 		byte[] bytes = (record + "\n").getBytes(StandardCharsets.US_ASCII);
 		printer.execute(new ChannelCommand(
 				ChannelCommand.Op.WRITE, bytes.length, false, bytes));
+	}
+
+	/** View and clear the buffer of output held because no printer exists. */
+	public List<String> drainOrphanOutput() {
+		List<String> out = List.copyOf(orphanOutput);
+		orphanOutput.clear();
+		return out;
+	}
+
+	public boolean hasOrphanOutput() {
+		return !orphanOutput.isEmpty();
 	}
 }

@@ -37,6 +37,7 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		return switch (cmd) {
 			case "START"   -> kernel.runNextJob();
 			case "DEVICES" -> listDevices(kernel);
+			case "OUTPUT"  -> dumpOrphanOutput(kernel);
 			case "HELP"    -> helpText();
 			default		   -> "IEE300I COMMAND NOT RECOGNIZED: " + cmd;
 		};
@@ -53,11 +54,25 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		return sb.toString();
 	}
 
+	private static String dumpOrphanOutput(MinaframeKernel kernel) {
+		if (!kernel.hasOrphanOutput()) {
+			return "IEE606I NO HELD OUTPUT";
+		}
+		var lines = kernel.drainOrphanOutput();
+		StringBuilder sb = new StringBuilder("IEE607I HELD LISTING -- ")
+			.append(lines.size()).append(" LINES");
+		for (String l : lines) {
+			sb.append("\n").append(l);
+		}
+		return sb.toString();
+	}
+
 	private static String helpText() {
 		return """
 			   IEE500I MAINFRAME OPERATOR COMMANDS
 				 START	   Read and run the next job from the card reader
 				 DEVICES   List channel-attached devices
+				 OUTPUT    Output held listing
 				 HELP	   Show this message
 			   """;
 	}
