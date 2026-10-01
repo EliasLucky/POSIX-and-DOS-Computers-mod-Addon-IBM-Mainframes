@@ -25,12 +25,15 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		}
 
 		String upper = input.toUpperCase(Locale.ROOT);
-		String cmd = upper.split("\\s+", 2)[0];
+		String[] parts = upper.split("\\s+",2);
+		String cmd = parts[0];
+		String arg = parts.length > 1 ? parts[1] : "";
 
 		return switch (cmd) {
 			case "START"   -> kernel.runNextJob();
 			case "DEVICES" -> listDevices(kernel);
 			case "OUTPUT"  -> dumpOrphanOutput(kernel);
+			case "DSLIST"  -> dslist(kernel,arg);
 			case "HELP"    -> helpText();
 			default		   -> "IEE300I COMMAND NOT RECOGNIZED: " + cmd;
 		};
@@ -57,6 +60,28 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 				.append(lines.size()).append(" LINES");
 		for (String l : lines) sb.append("\n").append(l);
 		return sb.toString();
+	}
+
+	private static String dslist(MainframeKernel kernel, String filder) {
+		if (kernel.catalog() == null) return "IEE608I CATALOG NOT AVAILABLE";
+		var names = kernel.catalog().listAll();
+		if (names.isEmpty()) return "IEE609I CATALOG IS EMPTY";
+
+		String prefix = filder == null ? "" : filder.replace("*", "").trim();
+		StringBuilder sb = new StringBuilder("IEE608I CATALOG CONTENTS:");
+		int shown = 0;
+		for (String dsn : names) {
+			if (!prefix.isEmpty() && !dsn.startsWith(prefix)) continue;
+
+			// Try to load the descriptor for a size report.
+			String volume = "UNKNOWN";
+			int size = -1;
+			var opt = kernel.catalog().lookup(dsn);
+			if (opt.isPresent()) {
+				var ds = opt.get();
+				// TODO: FINISH IT UP
+			}
+		}
 	}
 
 	private static String helpText() {

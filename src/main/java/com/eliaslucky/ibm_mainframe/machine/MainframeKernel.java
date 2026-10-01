@@ -57,6 +57,7 @@ public class MainframeKernel implements Kernel {
 	private final List<String> bootLog = new ArrayList<>();
 	private final List<String> orphanOutput = new ArrayList<>();
 
+	private DatasetCatalog catalog;
 	private boolean bootOk = false;
 	private boolean warnedNoPrinter = false;
 
@@ -97,8 +98,7 @@ public class MainframeKernel implements Kernel {
 			address++;
 
 			if (!dev.isReady()) {
-				bootLog.add("IEA904I UNIT " + unit + " " + dev.deviceName()
-						+ " NOT READY");
+				bootLog.add("IEA904I UNIT " + unit + " " + dev.deviceName() + " NOT READY");
 				continue;
 			}
 			if (devices.register(unit, dev)) {
@@ -111,6 +111,7 @@ public class MainframeKernel implements Kernel {
 		}
 
 		assignRoles();
+		this.catalog = new DatasetCatalog(vfs, this::allDiskDrives);
 
 		if (roleToUnit.get(Role.SYSIN_READER) == null) {
 			bootLog.add("IEE600W NO CARD READER -- START UNAVAILABLE");
@@ -149,6 +150,7 @@ public class MainframeKernel implements Kernel {
 	@Override public DeviceLookup getDevices() { return devices; }
 
 	public MainframeDeviceTable deviceTable() { return devices; }
+	public DatasetCatalog catalog() { return catalog; }
 	public boolean isBootOk() { return bootOk; }
 
 	/** The assigned SYSPRINT printer, or {@code null} if none exists. */
@@ -161,6 +163,24 @@ public class MainframeKernel implements Kernel {
 	public ChannelDevice reader() {
 		Integer u = roleToUnit.get(Role.SYSIN_READER);
 		return u == null ? null : devices.byUnit(u);
+	}
+
+	/** Every disk drive on the channel, in unit order. */
+	public List<DiskDriveBlockEntity> allDiskDrivers() {
+		List<DiskDriveBlockEntity> out = new ArrayList<>();
+		for (MainframeDeviceTable.Entry e : devices.all()) {
+			if (e.device() instanceof DiskDriveBlockEntity d) out.add(d);
+		}
+		return out;
+	}
+
+	/** Every tape drive on the channel, in unit order. */
+	public List<ChannelDevice> allTapeDrives() {
+		List<ChannelDevice> out = new ArrayList<>();
+		for (MainframeDeviceTable.Entry e : devices.all()) {
+			if ("tape".equals(e.device().deviceClass())) out.add(e.device());
+		}
+		return out;
 	}
 
 	// --- Listing output ---------------------------------------------------
@@ -211,8 +231,7 @@ public class MainframeKernel implements Kernel {
 		boolean sawJobCard = false;
 
 		while (true) {
-			ChannelResult res = r.execute(
-					new ChannelCommand(ChannelCommand.Op.READ, 80));
+			ChannelResult res = r.execute(new ChannelCommand(ChannelCommand.Op.READ, 80));
 
 			if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
 			if (!res.success() || !res.hasData()) break;
@@ -245,16 +264,17 @@ public class MainframeKernel implements Kernel {
 		writeListing("");
 		writeListing("IEF142I JOB " + job.name() + " STARTED");
 
-		JobContext ctx = new KernelJobContext();
 		for (Job.Step step : job.steps()) {
-			executeStep(step, ctx);
+			executeStep(step);
 		}
 
+		catalog.flush();
+		catalog.clearTemp();
 		writeListing("IEF142I JOB " + job.name() + " ENDED");
 		return "IEE604I JOB " + job.name() + " COMPLETE";
 	}
 
-	private void executeStep(Job.Step step, JobContext ctx) {
+	private void executeStep(Job.Step step) {
 		ProgramRegistry.Program program = ProgramRegistry.get(step.program());
 		if (program == null) {
 			writeListing("IEF212I STEP " + step.name() + " -- PROGRAM "
@@ -263,12 +283,19 @@ public class MainframeKernel implements Kernel {
 		}
 		writeListing("IEF142I STEP " + step.name() + " -- EXEC PGM=" + step.program());
 
-		CursorContext cursor = new CursorContext(step);
-		program.run(step, cursor);
+		CursorContext ctx = new CursorContext(step);
+		try {
+			program.run(step, ctx);
+		}
+		finally {
+			ctx.closeTapes();
+			catalog.flush();
+		}
 	}
 
 	// --- JobContext implementations ---------------------------------------
 
+	// TODO: Now that i think about it. do we really need it?
 	/** A bare job context used when no step is active. */
 	private final class KernelJobContext implements JobContext {
 		@Override public void operatorMessage(String m) { bootLog.add(m); }
@@ -282,30 +309,164 @@ public class MainframeKernel implements Kernel {
 	 */
 	private final class CursorContext implements JobContext {
 		private final Job.Step step;
-		private final Map<String, Integer> positions = new HashMap<>();
+		private final Map<String, Integer> readPositions = new HashMap<>();
+		private final Map<String, Dataset> datasetByDd = new HashMap<>();
+		private final Map<String, TapeState> tapeByDd = new HashMap<>();
 
-		CursorContext(Job.Step step) { this.step = step; }
+		CursorContext(Job.Step step) {
+			this.step = step;
+			List<ChannelDevice> drives = allTapeDrives();
+			int tapeIndex = 0;
+
+			for (Job.Dd dd : step.dds().values()) {
+				String unit = dd.unit() == null ? "" : dd.unit().toUpperCase(Locale.ROOT);
+
+				if (unit.startsWith("TAPE")) {
+					if (tapeIndex < drives.size()) {
+						TapeState ts = new TapeState();
+						ts.drive = drivers.get(tapeIndx++);
+						ts.dsn = dd.dataset() != null ? dd.dataset() : "SCRATCH";
+						tapeByDd.put(dd.ddName(),ts);
+					}
+					continue;
+				}
+
+				if (dd.kind() == Job.Dd.Kind.DATASET && dd.dataset() != null) {
+					String dns = dd.dataset().toUpperCase(Locale.ROOT);
+					var found = catalog.lookup(dsn);
+					if (found.isPresent()) {
+						Dataset ds = found.get();
+						datasetByDd.put(dd.ddName(),ds);
+						//DISP=MOD repositions the read cursor at end of file.
+						if (dd.disp() != null && dd.disp().isMod()) {
+							readPositions.put(dd.ddName(),ds.size());
+						}
+					}
+					else if (dd.disp() != null && dd.disp().isNew()) {
+						Dataset.Descriptor desc = new Dataset.Descriptor(
+								dsn, Dayaset.RecordFormat.FB, 80,0,
+								Dataset.Dsorg.PS,
+								dd.unit() == null ? "SYSRES" : dd.unit(),
+								System.currentTimeMillis());
+						datasetByDd.put(dd.ddName(), catalog.createPermanent(dsn,desc));
+					}
+				}
+			}
+		}
 
 		@Override
 		public String readRecord(String ddName) {
-			Job.Dd dd = step.dds().get(ddName.toUpperCase(Locale.ROOT));
+			String key = ddName.toUpperCase(Locale.ROOT); 
+			Job.Dd dd step.dds().get(key);
 			if (dd == null) return null;
-			if (dd.kind() != Job.Dd.Kind.INLINE) return null;
 
-			int pos = positions.getOrDefault(ddName, 0);
-			if (pos >= dd.inline().size()) return null;
-			positions.put(ddName, pos + 1);
-			return dd.inline().get(pos);
+			TapeState ts = tapeByDd.get(key);
+			if (ts != null) return readTapeRecord(ts);
+
+			Dataset ds = datasetByDd.get(key);
+			if (ds != null) {
+				int pos = readPositions.getOrDefault(key,0);
+				if (pos >= ds.size()) return null;
+				readPositions.put(key,pos+1);
+				return ds.records().get(pos);
+			}
+
+			if (dd.kind() == Job.Dd.Kind.INLINE) {
+				int pos = positions.getOrDefault(ddName, 0);
+				if (pos >= dd.inline().size()) return null;
+				positions.put(ddName, pos + 1);
+				return dd.inline().get(pos);
+			}
+			return null;
+		}
+
+		private String readTapeRecord(TapeState ts) {
+			// First read on this DD: skip any labels that precede data.
+			if (!ts.opened) {
+				ts.opened = true;
+				while (true) {
+					ChannelResult r = ts.drive.execute(
+							new ChannelCommand(ChannelCommand.Op.READ, 80));
+					if (r.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) return null;
+					if (!r.hasData()) return null;
+					String rec = new String(r.data(), StandardCharsets.US_ASCII);
+					if (TapeLabels.isHdr1(rec)) continue;
+					if (TapeLabels.isVol1(rec)) continue;
+					if (TapeLabels.isEof1(rec)) return null;
+					return rec;
+				}
+			}
+
+			ChannelResult r = ts.drive.execute(
+					new ChannelCommand(ChannelCommand.Op.READ, 80));
+			if (r.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) return null;
+			if (!r.hasData()) return null;
+			String rec = new String(r.data(), StandardCharsets.US_ASCII);
+			if (TapeLabels.isEof1(rec)) return null;
+			return rec;
 		}
 
 		@Override
 		public void writeRecord(String ddName, String record) {
+			String key ddName.toUpperCase(Locale.ROOT);
+			Job.Dd dd = step.dds().get(key);
+
+			if (dd == null || dd.kind() == Job.Dd.Kind.SYSOUT) {
+				writeListing(record);
+				return;
+			}
+
+			TapeState ts = tapeByDd.get(key);
+			if (ts != null) { whiteTapeRecord(ts,record); return }
+
+			Dataset ds = datasetByDd.get(key);
+			if (ds != null) { ds.addRecord(record); return; }
+
 			writeListing(record);
+		}
+
+		private void writeTapeRecord(TapeState ts, String record) {
+			if (!ts.written) {
+				ts.written = true;
+				String hdr = TapeLabels.hdr1(ts.dsn, volserOf(ts), ts.fileNum);
+				byte[] hb = hdr.getBytes(StandardCharsets.US_ASCII);
+				ts.drive.execute(new ChannelCommand(
+						ChannelCommand.Op.WRITE, hb.length, false, hb));
+			}
+			byte[] b = record.getBytes(StandardCharsets.US_ASCII);
+			ts.drive.execute(new ChannelCommand( 
+				ChannelCommand.Op.WRITE, b.length, false,b));
+		}
+
+		/** Close every written tape file with EOF1 and a tape mark. */
+		void closeTapes() {
+			for (TapeState ts : tapeByDd.values()) {
+				if (!ts.written) continue;
+				String eof = TapeLabels.eof1(ts.dsn, volserOf(ts), ts.fileNum);
+				byte[] eb = eof.getBytes(StandardCharsets.US_ASCII);
+				ts.drive.execute(new ChannelCommand(
+						ChannelCommand.Op.WRITE, eb.length, false, eb));
+				ts.drive.execute(new ChannelCommand(
+						ChannelCommand.Op.CONTROL, 1, false, new byte[] { ChannelControl.WEOF }));
+			}
+		}
+
+		private String volserOf(TapeState ts) {
+			if (ts.drive instanceof TapeDriveBlockEntity td) return td.getVolumeSerial();
+			return "";
 		}
 
 		@Override
 		public void operatorMessage(String message) {
 			bootLog.add(message);
 		}
+	}
+
+	private static final class TapeState {
+		ChannelDevice drive;
+		boolean opened;
+		boolean written;
+		int fileNum = 1;
+		String dsn;
 	}
 }

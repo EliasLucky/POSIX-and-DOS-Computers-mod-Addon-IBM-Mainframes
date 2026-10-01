@@ -83,6 +83,8 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 				+ ", record " + currentRecord + ".";
 	}
 
+	public String getVolumeSerial() { return volumeSerial; }
+
 	// --- ChannelDevice ----------------------------------------------------
 
 	@Override public String deviceName() { return "TAPE"; }
