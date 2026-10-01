@@ -38,7 +38,7 @@ public interface ChannelDevice extends Peripheral {
 	 * @param cmd the command to execute; never {@code null}
 	 * @return the device's status; never {@code null}
 	 */
-	ChannelStatus execute(ChannelCommand cmd);
+	ChannelResult execute(ChannelCommand cmd);
 
 	/** Device status codes. A subset of the real mainframe CSW bits. */
 	enum ChannelStatus {
