@@ -9,7 +9,7 @@ import net.minecraftforge.registries.RegistryObject;
 public class AllItems {
 	public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, Computers.MODID);
 
-	public static final RegistryObject<Item> WHITE_DESK_CABINET = ITEMS.register("white_desk_cabinet",
+	public static final RegistryObject<Item> WHITE_DESK_CABINET = ITEMS.register("blank:",
 			() -> new BlockItem(AllBlocks.WHITE_DESK_CABINET.get(), new Item.Properties())
 		);
 

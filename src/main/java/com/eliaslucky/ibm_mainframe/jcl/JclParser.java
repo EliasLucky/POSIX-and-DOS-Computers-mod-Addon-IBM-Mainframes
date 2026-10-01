@@ -163,26 +163,29 @@ public final class JclParser {
 					i++;
 				}
 				return new DdParse(new Job.Dd(
-						ddName, Job.Dd.Kind.INLINE, null, null, List.copyOf(data)), i);
+						ddName, Job.Dd.Kind.INLINE, null, null, List.copyOf(data), Job.Dd.Disp.TEMP, null), i);
 			}
 		}
 
-		String dataset = null, sysout = null;
+		String dataset = null, sysout = null, unit = null;
+		Job.Dd.Disp disp = null;
 		for (int f = 2; f < fields.length; f++) {
 			String up = fields[f].toUpperCase(Locale.ROOT);
-			if (up.startsWith("DSN="))	  dataset = fields[f].substring(4);
-			if (up.startsWith("SYSOUT=")) sysout  = fields[f].substring(7);
+			if (up.startsWith("DSN=")) dataset = fields[f].substring(4);
+			if (up.startsWith("SYSOUT=")) sysout = fields[f].substring(7);
+			if (up.startsWith("UNIT=")) unit = fields[f].substring(5);
+			if (up.startsWith("DISP=")) disp = Job.Dd.Disp.parse(fields[f].substring(5));
 		}
 		if (dataset != null) {
 			return new DdParse(new Job.Dd(
-					ddName, Job.Dd.Kind.DATASET, dataset, null, null), start + 1);
+					ddName, Job.Dd.Kind.DATASET, dataset, null, null, disp == null ? Job.Dd.Disp.OLD : disp, unit), start + 1);
 		}
 		if (sysout != null) {
 			return new DdParse(new Job.Dd(
-					ddName, Job.Dd.Kind.SYSOUT, null, sysout, null), start + 1);
+					ddName, Job.Dd.Kind.SYSOUT, null, sysout, null, null, unit), start + 1);
 		}
 		return new DdParse(new Job.Dd(
-				ddName, Job.Dd.Kind.OTHER, null, null, null), start + 1);
+				ddName, Job.Dd.Kind.OTHER, null, null, null, disp, unit), start + 1);
 	}
 
 	// --- Card helpers ------------------------------------------------------
