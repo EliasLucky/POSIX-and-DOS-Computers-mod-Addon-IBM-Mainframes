@@ -14,16 +14,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A {@link PeripheralBus} that spans a channel cable network rather
- * than the six faces of a computer block.
+ * A {@link PeripheralBus} backed by a channel cable network.
  *
- * <p>The constructor looks for any cable orthogonally adjacent to the
- * computer and asks {@link ChannelNetworkManager} for the network that
- * contains it. If no cable touches the machine, the bus is empty —
- * a mainframe without cables has no devices.
+ * <p>The constructor looks for a cable orthogonally adjacent to the
+ * computer. If found, the whole network is resolved through
+ * {@link ChannelNetworkManager}. The bus then reports:
+ * <ul>
+ *	 <li>the network itself (for kernels that need CCW dispatch)</li>
+ *	 <li>whether the network is shared with another mainframe
+ *		 ({@link #multipleCpus()})</li>
+ * </ul>
  */
 public class ChannelBus implements PeripheralBus {
 	private final ChannelNetwork network;
+	private final boolean multipleCpus;
 	private final Map<PeripheralAddress, ChannelDevice> byAddress = new HashMap<>();
 
 	public ChannelBus(Level level, BlockPos computerPos) {
@@ -35,32 +39,47 @@ public class ChannelBus implements PeripheralBus {
 				break;
 			}
 		}
-		this.network = (seed == null)
-				? ChannelNetwork.EMPTY
-				: ChannelNetworkManager.getOrBuild(level, seed);
+
+		if (seed == null) {
+			this.network = ChannelNetwork.EMPTY;
+			this.multipleCpus = false;
+			return;
+		}
+
+		ChannelNetwork net = ChannelNetworkManager.getOrBuild(level, seed);
+		// The calling CPU is itself adjacent to a cable, so it appears
+		// in net.cpus(). More than one entry means a second cabinet is
+		// also on this channel.
+		this.multipleCpus = net.cpus().size() > 1;
+		this.network = net;
 	}
 
-	/** Direct access for mainframe kernels that need CCW dispatch. */
+	/** The raw network, for kernels that need CCW dispatch. */
 	public ChannelNetwork network() { return network; }
+
+	/** Whether another mainframe cabinet shares this channel. */
+	public boolean multipleCpus() { return multipleCpus; }
 
 	@Override
 	public List<PeripheralAddress> scan() {
 		List<PeripheralAddress> out = new ArrayList<>(network.devices().size());
 		Map<String, Integer> slotCounters = new HashMap<>();
 
-		for (int i = 0; i < network.devices().size(); i++) {
-			ChannelDevice dev = network.devices().get(i);
-			if (!dev.isReady()) continue;
+		int address = 0;
+		for (ChannelDevice dev : network.devices()) {
+			if (!dev.isReady()) { address++; continue; }
 
 			int slot = slotCounters.merge(dev.deviceClass(), 1, Integer::sum) - 1;
-			PeripheralAddress addr = new PeripheralAddress(
+			PeripheralAddress.Channel addr = new PeripheralAddress.Channel(
 					dev.deviceClass(),
 					dev.vendorId(),
 					dev.productId(),
 					slot,
-					BlockPos.ZERO);  // TODO: base mod API requires worldPos for persistence. But channel device's identity is its position in the network and not its coordinates. Re-write PeripheralAddress later so it carries network slot and a nullable position.
+					"unit:" + address,
+					null);
 			out.add(addr);
 			byAddress.put(addr, dev);
+			address++;
 		}
 		return out;
 	}

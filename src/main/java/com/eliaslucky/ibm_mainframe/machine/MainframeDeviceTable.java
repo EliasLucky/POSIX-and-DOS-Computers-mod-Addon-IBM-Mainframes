@@ -10,40 +10,75 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Devices registered on a mainframe kernel, keyed by their
- * {@link ChannelDevice#deviceName()}. Unlike the DOS device table,
- * this one keeps the {@link ChannelDevice} itself so the kernel can
- * issue CCWs directly, not just push bytes through a handler.
+ * The mainframe kernel's device table.
+ *
+ * <p>Every entry carries a unit address (the channel address the
+ * device occupies), a device name (its {@link ChannelDevice#deviceName()}),
+ * and the live {@link ChannelDevice}. The kernel looks devices up by
+ * either key.
+ *
+ * <p>Unlike the DOS device table, this one keeps the CCW-capable
+ * device rather than wrapping it in a {@link DeviceHandler}. Mainframe
+ * programs issue CCWs directly; the byte-stream view is offered for
+ * compatibility via {@link #lookup(String)}.
  */
 public class MainframeDeviceTable implements DeviceLookup {
-	private final Map<String, ChannelDevice> devices = new LinkedHashMap<>();
+	/** One registered device. */
+	public record Entry(int unit, String name, ChannelDevice device) {}
 
-	public boolean register(ChannelDevice dev) {
-		String key = dev.deviceName().toUpperCase(Locale.ROOT);
-		if (key.isEmpty() || devices.containsKey(key)) return false;
-		devices.put(key, dev);
+	private final Map<Integer, Entry> byUnit = new LinkedHashMap<>();
+	private final Map<String, Entry> byName = new LinkedHashMap<>();
+
+	/**
+	 * Register a device at a unit address.
+	 *
+	 * @return {@code false} if the unit or name is already taken
+	 */
+	public boolean register(int unit, ChannelDevice dev) {
+		if (byUnit.containsKey(unit)) return false;
+		String name = dev.deviceName().toUpperCase(Locale.ROOT);
+		if (name.isEmpty() || byName.containsKey(name)) return false;
+
+		Entry e = new Entry(unit, name, dev);
+		byUnit.put(unit, e);
+		byName.put(name, e);
 		return true;
 	}
 
-	/** The CCW-capable device, or {@code null}. */
-	public ChannelDevice device(String name) {
-		return devices.get(name.toUpperCase(Locale.ROOT));
+	public ChannelDevice byUnit(int unit) {
+		Entry e = byUnit.get(unit);
+		return e == null ? null : e.device();
 	}
 
-	public void clear() { devices.clear(); }
-
-	// --- DeviceLookup: byte-stream view for legacy PC-style callers ---
-
-	@Override public boolean isDevice(String name) {
-		return devices.containsKey(name.toUpperCase(Locale.ROOT));
+	public ChannelDevice byName(String name) {
+		Entry e = byName.get(name.toUpperCase(Locale.ROOT));
+		return e == null ? null : e.device();
 	}
 
-	@Override public DeviceHandler lookup(String name) {
-		ChannelDevice d = device(name);
+	public int unitOf(String name) {
+		Entry e = byName.get(name.toUpperCase(Locale.ROOT));
+		return e == null ? -1 : e.unit();
+	}
+
+	public List<Entry> all() { return List.copyOf(byUnit.values()); }
+
+	public void clear() { byUnit.clear(); byName.clear(); }
+
+	// --- DeviceLookup: byte-stream view for PC-style callers ------------
+
+	@Override
+	public boolean isDevice(String name) {
+		return byName.containsKey(name.toUpperCase(Locale.ROOT));
+	}
+
+	@Override
+	public DeviceHandler lookup(String name) {
+		ChannelDevice d = byName(name);
 		return d == null ? null : DeviceHandler.of(d);
 	}
 
-	@Override public List<String> names() {
-		return List.copyOf(devices.keySet());
+	@Override
+	public List<String> names() {
+		return List.copyOf(byName.keySet());
 	}
 }

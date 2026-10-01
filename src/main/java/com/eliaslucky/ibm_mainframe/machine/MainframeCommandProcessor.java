@@ -9,15 +9,9 @@ import com.eliaslucky.mc_dos.blocks.computer.processors.ICommandProcessor;
 import java.util.Locale;
 
 /**
- * Operator console for a mainframe. The commands are the ones an
- * operator typed at the 1052 console.
- *
- * <p>vsupports:
- * <ul>
- *	 <li>{@code START} read and run the next job from the card reader</li>
- *	 <li>{@code DEVICES} list registered channel devices</li>
- *	 <li>{@code HELP} brief command summary</li>
- * </ul>
+ * Operator console for a mainframe. The commands mirror what a real
+ * operator typed at the 1052: short, terse, and about the machine
+ * rather than the workload.
  */
 public class MainframeCommandProcessor implements ICommandProcessor {
 	@Override
@@ -31,8 +25,7 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		}
 
 		String upper = input.toUpperCase(Locale.ROOT);
-		String[] parts = upper.split("\\s+", 2);
-		String cmd = parts[0];
+		String cmd = upper.split("\\s+", 2)[0];
 
 		return switch (cmd) {
 			case "START"   -> kernel.runNextJob();
@@ -44,26 +37,25 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 	}
 
 	private static String listDevices(MainframeKernel kernel) {
-		var names = kernel.deviceTable().names();
-		if (names.isEmpty()) return "IEE301I NO DEVICES REGISTERED";
+		var entries = kernel.deviceTable().all();
+		if (entries.isEmpty()) return "IEE301I NO DEVICES REGISTERED";
+
 		StringBuilder sb = new StringBuilder("IEE302I CONFIGURED DEVICES:");
-		for (String n : names) {
-			sb.append("\n  ").append(n).append("  ")
-			  .append(kernel.deviceTable().device(n).description());
+		for (var e : entries) {
+			sb.append("\n  UNIT ").append(String.format("%03d", e.unit()))
+			  .append("  ").append(String.format("%-8s", e.name()))
+			  .append("  ").append(e.device().description());
 		}
 		return sb.toString();
 	}
 
-	private static String dumpOrphanOutput(MinaframeKernel kernel) {
-		if (!kernel.hasOrphanOutput()) {
-			return "IEE606I NO HELD OUTPUT";
-		}
+	private static String dumpOrphanOutput(MainframeKernel kernel) {
+		if (!kernel.hasOrphanOutput()) return "IEE606I NO HELD OUTPUT";
+
 		var lines = kernel.drainOrphanOutput();
 		StringBuilder sb = new StringBuilder("IEE607I HELD LISTING -- ")
-			.append(lines.size()).append(" LINES");
-		for (String l : lines) {
-			sb.append("\n").append(l);
-		}
+				.append(lines.size()).append(" LINES");
+		for (String l : lines) sb.append("\n").append(l);
 		return sb.toString();
 	}
 
@@ -71,15 +63,15 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		return """
 			   IEE500I MAINFRAME OPERATOR COMMANDS
 				 START	   Read and run the next job from the card reader
-				 DEVICES   List channel-attached devices
-				 OUTPUT    Output held listing
+				 DEVICES   List channel-attached devices with unit addresses
+				 OUTPUT    View listings held because no printer is attached
 				 HELP	   Show this message
 			   """;
 	}
 
-	@Override public String getPrompt(String path) { return ""; }
-	@Override public String defaultPath()		   { return "/"; }
-	@Override public FileNamePolicy fileNamePolicy() { return PosixFileNamePolicy.INSTANCE; }
-	@Override public String osFamily()			   { return "os360"; }
-	@Override public Kernel createKernel()		   { return new MainframeKernel(); }
+	@Override public String getPrompt(String path)	   { return ""; }
+	@Override public String defaultPath()			   { return "/"; }
+	@Override public FileNamePolicy fileNamePolicy()   { return PosixFileNamePolicy.INSTANCE; }
+	@Override public String osFamily()				   { return "os360"; }
+	@Override public Kernel createKernel()			   { return new MainframeKernel(); }
 }
