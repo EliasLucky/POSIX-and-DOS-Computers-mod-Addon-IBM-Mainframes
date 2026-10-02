@@ -1,5 +1,6 @@
 package com.eliaslucky.ibm_mainframe.machine;
 
+import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlockEntity;
 import com.eliaslucky.ibm_mainframe.blocks.DiskDriveBlockEntity;
 import com.eliaslucky.ibm_mainframe.blocks.TapeDriveBlockEntity;
 import com.eliaslucky.ibm_mainframe.channel.ChannelBus;
@@ -57,15 +58,17 @@ public class MainframeKernel implements Kernel {
 		/** Where SYSIN data is read from. */
 		SYSIN_READER
 	}
-
+	 /** Cap on the pending-operator buffer while no console is attached. */
+	private static final int MAX_PENDING_LINES = 1000;
 	private final MainframeDeviceTable devices = new MainframeDeviceTable();
 	private final Map<Role, Integer> roleToUnit = new EnumMap<>(Role.class);
 	private final List<String> bootLog = new ArrayList<>();
-	private final List<String> orphanOutput = new ArrayList<>();
+	private final List<String> pendingOperator = new ArrayList<>();
 
 	private DatasetCatalog catalog;
 	private boolean bootOk = false;
 	private boolean warnedNoPrinter = false;
+	private ConsoleBlockEntity console;
 
 	public MainframeKernel() {
 		ProgramRegistry.register("FORT", new FortProgram());
@@ -78,30 +81,31 @@ public class MainframeKernel implements Kernel {
 		devices.clear();
 		roleToUnit.clear();
 		bootLog.clear();
-		orphanOutput.clear();
+		pendingOperator.clear();
 		bootOk = false;
 		warnedNoPrinter = false;
 
 		if (!(bus instanceof ChannelBus cb)) {
-			bootLog.add("IEA901E NO CHANNEL BUS AVAILABLE");
+			logBoot("IEA901E NO CHANNEL BUS AVAILABLE");
 			return;
 		}
 		if (cb.multipleCpus()) {
-			bootLog.add("IEA902E MULTIPLE PROCESSORS DETECTED ON CHANNEL");
-			bootLog.add("IEA903E IPL FAILED -- SEPARATE THE CHANNEL NETWORKS");
+			logBoot("IEA902E MULTIPLE PROCESSORS DETECTED ON CHANNEL");
+			logBoot("IEA903E IPL FAILED -- SEPARATE THE CHANNEL NETWORKS");
 			return;
 		}
 
 		ChannelNetwork net = cb.network();
 		if (net.isEmpty()) {
-			bootLog.add("IEA901E NO CHANNEL CABLES ATTACHED");
+			logBoot("IEA901E NO CHANNEL CABLES ATTACHED");
 			return;
 		}
+		
+		logBoot("IEA000I IBM SYSTEM/360 MODEL 30 -- IPL IN PROGRESS");
 
 		int address = 0;
 		for (ChannelDevice dev : net.devices()) {
-			int unit = address;
-			address++;
+			int unit = address++;
 
 			if (!dev.isReady()) {
 				bootLog.add("IEA904I UNIT " + unit + " " + dev.deviceName() + " NOT READY");
@@ -120,11 +124,14 @@ public class MainframeKernel implements Kernel {
 		this.catalog = new DatasetCatalog(vfs, this::allDiskDrives);
 
 		if (roleToUnit.get(Role.SYSIN_READER) == null) {
-			bootLog.add("IEE600W NO CARD READER -- START UNAVAILABLE");
+			logBoot("IEE600W NO CARD READER -- START UNAVAILABLE");
 		}
 		if (roleToUnit.get(Role.SYSPRINT_PRINTER) == null) {
-			bootLog.add("IEE605W NO PRINTER -- LISTINGS HELD IN MEMORY");
+			logBoot("IEE605W NO PRINTER -- LISTINGS HELD TO CONSOLE");
+			warnedNoPrinter = true;
 		}
+		
+		logBoot("IEA001I IPL COMPLETE -- READY");
 
 		bootOk = true;
 	}
@@ -148,12 +155,96 @@ public class MainframeKernel implements Kernel {
 		devices.clear();
 		roleToUnit.clear();
 		bootLog.clear();
-		orphanOutput.clear();
+		pendingOperator.clear();
+		catalog = null;
 		bootOk = false;
 	}
 
 	@Override public List<String> getBootLog() { return List.copyOf(bootLog); }
 	@Override public DeviceLookup getDevices() { return devices; }
+	// --- Console binding --------------------------------------------------
+
+	/**
+	 * Called by a console BE when it discovers this kernel on an
+	 * adjacent CPU. Flushes any pending operator output to the new
+	 * console and routes all future messages there.
+	 */
+	public void attachConsole(ConsoleBlockEntity c) {
+		if (c == null) return;
+		// If a different console is already attached, detach it first.
+		if (this.console != null && this.console != c) {
+			this.console.detachFromKernel();
+		}
+		this.console = c;
+		c.append("IEE101I CONSOLE ATTACHED -- " + devices.names().size() + " DEVICES");
+
+		if (!pendingOperator.isEmpty()) {
+			c.appendLines(pendingOperator);
+			pendingOperator.clear();
+		}
+	}
+
+	/** Called by a console BE when it unbinds or is broken. */
+	public void detachConsole(ConsoleBlockEntity c) {
+		if (this.console == c) this.console = null;
+	}
+
+	public boolean hasConsole() { return console != null; }
+
+	// --- Operator output --------------------------------------------------
+
+	/**
+	 * Route one line to the operator. Console if attached, else a
+	 * bounded buffer that is flushed on attach.
+	 */
+	private void toOperator(String line) {
+		if (line == null) return;
+		if (console != null) {
+			console.append(line);
+		} else {
+			pendingOperator.add(line);
+			while (pendingOperator.size() > MAX_PENDING_LINES) {
+				pendingOperator.remove(0);
+			}
+		}
+	}
+
+	/** Log a boot-time message: historical record + operator display. */
+	private void logBoot(String line) {
+		bootLog.add(line);
+		toOperator(line);
+	}
+
+	/**
+	 * Write one record to SYSPRINT. Routes to the printer if one is
+	 * attached; otherwise prefixes the line and sends it to the
+	 * operator console. Warns about the missing printer exactly once
+	 * per boot.
+	 */
+	public void writeListing(String record) {
+		ChannelDevice p = printer();
+		if (p == null) {
+			toOperator("[SYSPRINT] " + record);
+			return;
+		}
+		byte[] bytes = (record + "\n").getBytes(StandardCharsets.US_ASCII);
+		p.execute(new ChannelCommand(
+				ChannelCommand.Op.WRITE, bytes.length, false, bytes));
+	}
+
+	/**
+	 * Take and clear the pending-operator buffer. Used by the OUTPUT
+	 * command when the console is not yet attached.
+	 */
+	public List<String> drainOrphanOutput() {
+		List<String> out = List.copyOf(pendingOperator);
+		pendingOperator.clear();
+		return out;
+	}
+
+	public boolean hasOrphanOutput() { return !pendingOperator.isEmpty(); }
+
+	// --- Accessors --------------------------------------------------------
 
 	public MainframeDeviceTable deviceTable() { return devices; }
 	public DatasetCatalog catalog() { return catalog; }
@@ -188,37 +279,6 @@ public class MainframeKernel implements Kernel {
 		}
 		return out;
 	}
-
-	// --- Listing output ---------------------------------------------------
-
-	/**
-	 * Write one record to the SYSPRINT printer. Falls back to an
-	 * in-memory buffer if no printer is attached, warning the operator
-	 * exactly once per boot.
-	 */
-	public void writeListing(String record) {
-		ChannelDevice p = printer();
-		if (p == null) {
-			orphanOutput.add(record);
-			if (!warnedNoPrinter) {
-				warnedNoPrinter = true;
-				bootLog.add("IEE605W NO PRINTER -- USE 'OUTPUT' TO VIEW LISTINGS");
-			}
-			return;
-		}
-		byte[] bytes = (record + "\n").getBytes(StandardCharsets.US_ASCII);
-		p.execute(new ChannelCommand(
-				ChannelCommand.Op.WRITE, bytes.length, false, bytes));
-	}
-
-	/** Take and clear the held listing buffer. */
-	public List<String> drainOrphanOutput() {
-		List<String> out = List.copyOf(orphanOutput);
-		orphanOutput.clear();
-		return out;
-	}
-
-	public boolean hasOrphanOutput() { return !orphanOutput.isEmpty(); }
 
 	// --- Job execution ----------------------------------------------------
 
@@ -326,6 +386,9 @@ public class MainframeKernel implements Kernel {
 						ts.dsn = dd.dataset() != null ? dd.dataset() : "SCRATCH";
 						tapeByDd.put(dd.ddName(),ts);
 					}
+					else {
+						writeListing("IEF210W NO TAPE DRIVE AVAILABLE FOR " + dd.ddName());
+					}
 					continue;
 				}
 
@@ -347,6 +410,9 @@ public class MainframeKernel implements Kernel {
 								dd.unit() == null ? "SYSRES" : dd.unit(),
 								System.currentTimeMillis());
 						datasetByDd.put(dd.ddName(), catalog.createPermanent(dsn,desc));
+					}
+					else {
+						writeListing("IEF214W DATASET NOT FOUND: " + dsn);
 					}
 				}
 			}
@@ -457,6 +523,7 @@ public class MainframeKernel implements Kernel {
 		@Override
 		public void operatorMessage(String message) {
 			bootLog.add(message);
+			toOperator(message);
 		}
 	}
 
