@@ -8,6 +8,8 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
+import com.eliaslucky.ibm_mainframe.AllItems;
+
 import java.util.List;
 
 /** A printed listing from the 1403. Holds text in NBT. Non-stackable. */
@@ -20,7 +22,7 @@ public class ListingItem extends Item {
 	}
 
 	public static ItemStack of(String text) {
-		ItemStack stack = new ItemStack(ModItems.LISTING.get());
+		ItemStack stack = new ItemStack(AllItems.PRINTER_LISTING_PAPER.get());
 		String t = text == null ? "" : text;
 		if (t.length() > MAX_LENGTH) t = t.substring(0, MAX_LENGTH);
 		CompoundTag tag = stack.getOrCreateTag();

@@ -10,6 +10,8 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.eliaslucky.ibm_mainframe.AllItems;
+
 /**
  * An ordered stack of punched cards. Each entry is one 80-column
  * string. Non-stackable, identity lives in NBT.
@@ -25,7 +27,7 @@ public class CardDeckItem extends Item {
 	}
 
 	public static ItemStack of(List<String> cards) {
-		ItemStack stack = new ItemStack(ModItems.CARD_DECK.get());
+		ItemStack stack = new ItemStack(AllItems.CARD_DECK.get());
 		ListTag list = new ListTag();
 		int n = Math.min(cards.size(), MAX_CARDS);
 		for (int i = 0; i < n; i++) {

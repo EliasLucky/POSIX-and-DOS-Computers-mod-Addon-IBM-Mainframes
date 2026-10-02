@@ -1,5 +1,6 @@
 package com.eliaslucky.ibm_mainframe.network;
 
+import com.eliaslucky.ibm_mainframe.blocks.KeypunchBlock;
 import com.eliaslucky.ibm_mainframe.items.CardDeckItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;

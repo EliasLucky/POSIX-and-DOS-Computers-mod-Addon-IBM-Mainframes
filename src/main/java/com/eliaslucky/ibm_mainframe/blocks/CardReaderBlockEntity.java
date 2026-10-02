@@ -2,9 +2,10 @@ package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.channel.*;
 import com.eliaslucky.ibm_mainframe.items.CardDeckItem;
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,7 +23,7 @@ public class CardReaderBlockEntity extends BlockEntity implements ChannelDevice 
 
 	// TODO: Currently it's read-only from program's perspective. Later make it so it can write back to a punched desk using command WRITE
 	public CardReaderBlockEntity(BlockPos pos, BlockState state) {
-		super(ModBlockEntities.CARD_READER.get(), pos, state);
+		super(AllBlockEntities.IBM_2540_CARD_READER.get(), pos, state);
 	}
 
 	// --- Deck manipulation -------------------------------------------------

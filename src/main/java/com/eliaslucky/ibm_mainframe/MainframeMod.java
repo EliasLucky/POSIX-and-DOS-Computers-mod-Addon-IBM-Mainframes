@@ -15,15 +15,15 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
-@Mod(Computers.MODID)
-public class Computers
+@Mod(MainframeMod.MODID)
+public class MainframeMod
 {
 	public static final String MODID = "ibm_mainframes";
 	public static final String NAME = "IBM Mainframes addon for \"POSIX and DOS Computers mod\"";
 
 	public static final Logger LOGGER = LogUtils.getLogger();
 
-	public Computers(FMLJavaModLoadingContext context)
+	public MainframeMod(FMLJavaModLoadingContext context)
 	{
 		IEventBus modEventBus = context.getModEventBus();
         
@@ -64,9 +64,12 @@ public class Computers
 					}
 				}
 			}
+		});
+		AllItems.ITEMS.getEntries().forEach(registryObject -> {
+			Item item = registryObject.get();
 			if (item instanceof ICustomCreativeTab customTabItem) {
 				if (event.getTabKey() == customTabItem.getCreativeTab()) {
-					event.accept(customTabItem)
+					event.accept(item);
 				}
 			}
 		});

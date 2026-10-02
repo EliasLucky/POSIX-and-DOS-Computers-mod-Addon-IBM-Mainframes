@@ -1,4 +1,4 @@
-package com.eliaslucky.mc_dos.network;
+package com.eliaslucky.ibm_mainframe.network;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -7,11 +7,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.List;
 import java.util.function.Supplier;
 
+import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlockEntity;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 
-public class ServerboundConsoleCommandPacket {i
+public class ServerboundConsoleCommandPacket {
 	public static final int MAX_CMD = 512;
 
 	private final BlockPos pos;

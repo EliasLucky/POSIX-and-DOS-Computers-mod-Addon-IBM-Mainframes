@@ -1,5 +1,6 @@
 package com.eliaslucky.ibm_mainframe.items;
 
+import com.eliaslucky.ibm_mainframe.AllItems;
 import com.eliaslucky.ibm_mainframe.dataset.Dataset;
 
 import net.minecraft.nbt.CompoundTag;
@@ -36,7 +37,7 @@ public class DiskPackItem extends Item {
 	// --- Construction ---------------------------------------------------
 
 	public static ItemStack blank() {
-		ItemStack s = new ItemStack(ModItems.DISK_PACK.get());
+		ItemStack s = new ItemStack(AllItems.DISK_PACK.get());
 		CompoundTag t = s.getOrCreateTag();
 		t.putString(TAG_VOLSER, "");
 		t.put(TAG_DATASETS, new ListTag());

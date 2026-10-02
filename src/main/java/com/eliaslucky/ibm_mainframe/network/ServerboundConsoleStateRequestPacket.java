@@ -1,5 +1,6 @@
 package com.eliaslucky.ibm_mainframe.network;
 
+import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlockEntity;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;

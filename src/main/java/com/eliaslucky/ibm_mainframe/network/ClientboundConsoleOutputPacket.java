@@ -1,4 +1,4 @@
-package com.eliaslucky.mc_dos.network;
+package com.eliaslucky.ibm_mainframe.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
@@ -8,6 +8,7 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import com.eliaslucky.ibm_mainframe.client.ConsoleScreen;
 import com.eliaslucky.mc_dos.client.ComputerTerminalScreen;
 
 public class ClientboundConsoleOutputPacket {
@@ -35,7 +36,7 @@ public class ClientboundConsoleOutputPacket {
 		NetworkEvent.Context ctx = contextSupplier.get();
 		ctx.enqueueWork(() -> {
 			DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-				if (Minecraft.getInstance().screen instanceof ConsoleScreen screen) {
+				if (Minecraft.getInstance().screen instanceof ConsoleScreen cs) {
 					// First packet replaces the buffer; subsequent packets append.
 					cs.setBuffer(lines);
 				}

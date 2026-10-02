@@ -1,5 +1,7 @@
 package com.eliaslucky.ibm_mainframe;
 
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -8,11 +10,12 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
-import com.eliaslucky.ibm_mainframe.blocks.ChannelBlock;
+import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlock;
 import com.eliaslucky.ibm_mainframe.blocks.MainframeBlock;
 import com.eliaslucky.ibm_mainframe.blocks.CardReaderBlock;
 import com.eliaslucky.ibm_mainframe.blocks.LinePrinterBlock;
 import com.eliaslucky.ibm_mainframe.blocks.TapeDriveBlock;
+import com.eliaslucky.ibm_mainframe.channel.ChannelCableBlock;
 import com.eliaslucky.ibm_mainframe.blocks.DiskDriveBlock;
 import com.eliaslucky.ibm_mainframe.blocks.KeypunchBlock;
 
@@ -29,7 +32,7 @@ public class AllBlocks {
 				.sound(SoundType.STONE)
 				.requiresCorrectToolForDrops()
 				.ignitedByLava()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
 	// MAINFRAMES
@@ -39,7 +42,7 @@ public class AllBlocks {
 				.strength(3.5F)
 				.sound(SoundType.METAL)
 				.requiresCorrectToolForDrops()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
 	// PERIPHERALS
@@ -49,7 +52,7 @@ public class AllBlocks {
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
 				.requiresCorrectToolForDrops()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 	
 	public static final RegistryObject<Block> IBM_029_LINE_PRINTER = registerBlock("ibm_029_line_printer",
@@ -58,7 +61,7 @@ public class AllBlocks {
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
 				.requiresCorrectToolForDrops()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
 	public static final RegistryObject<Block> IBM_TAPE_DRIVE = registerBlock("ibm_tape_drive",
@@ -67,7 +70,7 @@ public class AllBlocks {
 				.strength(2.0F,2.0F)
 				.sound(SoundType.STONE)
 				.noOcclusion()
-			), Item.Propertiesties()
+			), new Item.Properties()
 		);
 
 	public static final RegistryObject<Block> IBM_2311_DISK_DRIVE = registerBlock("ibm_2311_disk_drive",
@@ -76,7 +79,7 @@ public class AllBlocks {
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
 				.requiresCorrectToolForDrops()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
 	public static final RegistryObject<Block> IBM_1052_CONSOLE = registerBlock("ibm_1052_console",
@@ -85,21 +88,21 @@ public class AllBlocks {
 				.strength(2.0F)
 				.sound(SoundType.METAL)
 				.requiresCorrectToolForDrops()
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
 	// PROGRAMMING TOOLS
 	public static final RegistryObject<Block> IBM_KEYPUNCH = registerBlock("ibm_keypunch",
 			() -> new KeypunchBlock(BlockBehaviour.Properties.of()
 				.mapColor(MapColor.COLOR_GRAY)
-				.strength(2.0F,2.0f),
+				.strength(2.0F,2.0f)
 				.sound(SoundType.METAL)
-			), Item.Properties()
+			), new Item.Properties()
 		);
 
-	private static <T extends Block> Registry<T> registerBlock(String name, Supplier<T> block, Item.Properties props) {
+	private static <T extends Block> RegistryObject<T> registerBlock(String name, Supplier<T> block, Item.Properties props) {
 		RegistryObject<T> registered = BLOCKS.register(name,block);
-		BLOCK_ITEMS.register(name, () -> BlockItem(registered.get(), props));
-		return registerd;
+		BLOCK_ITEMS.register(name, () -> new BlockItem(registered.get(), props));
+		return registered;
 	}
 }

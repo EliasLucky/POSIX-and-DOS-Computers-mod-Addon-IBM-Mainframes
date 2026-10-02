@@ -10,7 +10,7 @@ import net.minecraftforge.registries.RegistryObject;
 
 //@EventBusSubscriber(bus = Bus.MOD)
 public class AllCreativeModeTabs {
-	private static final DeferredRegister<CreativeModeTab> REGISTER = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Computers.MODID);
+	private static final DeferredRegister<CreativeModeTab> REGISTER = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MainframeMod.MODID);
 
 	public static final RegistryObject<CreativeModeTab> BASE_CREATIVE_TAB = REGISTER.register("base", () -> CreativeModeTab.builder()
 		.title(Component.translatable("itemGroup.ibm_mainframe.base"))

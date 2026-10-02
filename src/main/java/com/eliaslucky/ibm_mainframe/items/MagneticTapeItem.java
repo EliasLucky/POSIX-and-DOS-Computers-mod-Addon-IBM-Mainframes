@@ -10,6 +10,8 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.eliaslucky.ibm_mainframe.AllItems;
+
 /**
  * A reel of 9-track magnetic tape. Non-stackable — each reel is a
  * unique physical volume.
@@ -33,14 +35,14 @@ public class MagneticTapeItem extends Item {
 
 	/** A blank reel with no serial and no files. */
 	public static ItemStack blank() {
-		ItemStack s = new ItemStack(ModItems.MAGNETIC_TAPE.get());
+		ItemStack s = new ItemStack(AllItems.MAGNETIC_TAPE.get());
 		s.getOrCreateTag().putString(TAG_SERIAL, "");
 		s.getOrCreateTag().put(TAG_FILES, new ListTag());
 		return s;
 	}
 
 	public static ItemStack of(String serial, List<List<String>> files) {
-		ItemStack s = new ItemStack(ModItems.MAGNETIC_TAPE.get());
+		ItemStack s = new ItemStack(AllItems.MAGNETIC_TAPE.get());
 		CompoundTag tag = s.getOrCreateTag();
 		tag.putString(TAG_SERIAL, serial == null ? "" : serial);
 

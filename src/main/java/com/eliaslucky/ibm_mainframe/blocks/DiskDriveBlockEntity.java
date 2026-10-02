@@ -5,6 +5,7 @@ import com.eliaslucky.ibm_mainframe.channel.ChannelDevice;
 import com.eliaslucky.ibm_mainframe.channel.ChannelResult;
 import com.eliaslucky.ibm_mainframe.dataset.Dataset;
 import com.eliaslucky.ibm_mainframe.items.DiskPackItem;
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -32,7 +33,7 @@ public class DiskDriveBlockEntity extends BlockEntity implements ChannelDevice {
     private ItemStack pack = ItemStack.EMPTY;
 
     public DiskDriveBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.DISK_DRIVE.get(), pos, state);
+        super(AllBlockEntities.IBM_2311_DISK_DRIVE.get(), pos, state);
     }
 
     // --- Pack handling ---------------------------------------------------

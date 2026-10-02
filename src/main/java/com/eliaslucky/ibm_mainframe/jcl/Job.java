@@ -1,6 +1,7 @@
 package com.eliaslucky.ibm_mainframe.jcl;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -72,7 +73,7 @@ public record Job(String name, List<Step> steps) {
 				return switch (status) {
 					case "NEW" -> "DELETE";
 					default -> "KEEP";
-				}
+				};
 			}
 
 			public boolean isNew()    { return "NEW".equals(status); }

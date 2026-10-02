@@ -1,6 +1,7 @@
 package com.eliaslucky.ibm_mainframe;
 
 import com.eliaslucky.ibm_mainframe.blocks.CardReaderBlockEntity;
+import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlockEntity;
 import com.eliaslucky.ibm_mainframe.blocks.LinePrinterBlockEntity;
 import com.eliaslucky.ibm_mainframe.blocks.TapeDriveBlockEntity;
 import com.eliaslucky.ibm_mainframe.blocks.DiskDriveBlockEntity;
@@ -11,11 +12,11 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
 public class AllBlockEntities {
-	public static final DeferredReegister<BlockEntityEntity<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPE, MainframeMod.MODID);
+	public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MainframeMod.MODID);
 	
 	public static final RegistryObject<BlockEntityType<CardReaderBlockEntity>> IBM_2540_CARD_READER = BLOCK_ENTITIES.register("ibm_2540_card_reader",
         	() -> BlockEntityType.Builder.of(CardReaderBlockEntity::new,
-			AllBlocks.IBM_CARD_READER.get()).build(null)
+			AllBlocks.IBM_2540_CARD_READER.get()).build(null)
 	);
 
 	public static final RegistryObject<BlockEntityType<LinePrinterBlockEntity>> IBM_029_LINE_PRINTER = BLOCK_ENTITIES.register("ibm_029_line_printer",
@@ -34,6 +35,6 @@ public class AllBlockEntities {
 	);
 	public static final RegistryObject<BlockEntityType<ConsoleBlockEntity>> IBM_1035_CONSOLE = BLOCK_ENTITIES.register("ibm_1035_console",
 		() -> BlockEntityType.Builder.of(ConsoleBlockEntity::new,
-			AllBlocks.IBM_1035_CONSOLE.get()).build(null)
+			AllBlocks.IBM_1052_CONSOLE.get()).build(null)
 	);
 }

@@ -1,6 +1,7 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import com.eliaslucky.mc_dos.api.hardware.Kernel;
 
@@ -37,7 +38,7 @@ public class ConsoleBlockEntity extends BlockEntity {
 	private BlockPos boundCpu = null;
 
 	public ConsoleBlockEntity(BlockPos pos, BlockState state) {
-		super(ModBlockEntities.CONSOLE.get(), pos, state);
+		super(AllBlockEntities.IBM_1035_CONSOLE.get(), pos, state);
 	}
 
 	// --- Binding ---------------------------------------------------------

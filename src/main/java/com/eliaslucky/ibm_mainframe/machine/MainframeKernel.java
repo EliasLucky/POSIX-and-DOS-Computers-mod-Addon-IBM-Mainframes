@@ -1,7 +1,10 @@
 package com.eliaslucky.ibm_mainframe.machine;
 
+import com.eliaslucky.ibm_mainframe.blocks.DiskDriveBlockEntity;
+import com.eliaslucky.ibm_mainframe.blocks.TapeDriveBlockEntity;
 import com.eliaslucky.ibm_mainframe.channel.ChannelBus;
 import com.eliaslucky.ibm_mainframe.channel.ChannelCommand;
+import com.eliaslucky.ibm_mainframe.channel.ChannelControl;
 import com.eliaslucky.ibm_mainframe.channel.ChannelDevice;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetwork;
 import com.eliaslucky.ibm_mainframe.channel.ChannelResult;
@@ -9,7 +12,10 @@ import com.eliaslucky.ibm_mainframe.jcl.JclParser;
 import com.eliaslucky.ibm_mainframe.jcl.Job;
 import com.eliaslucky.ibm_mainframe.jcl.JobContext;
 import com.eliaslucky.ibm_mainframe.jcl.ProgramRegistry;
+import com.eliaslucky.ibm_mainframe.jcl.TapeLabels;
 import com.eliaslucky.ibm_mainframe.programs.FortProgram;
+import com.eliaslucky.ibm_mainframe.dataset.Dataset;
+import com.eliaslucky.ibm_mainframe.dataset.DatasetCatalog;
 import com.eliaslucky.mc_dos.api.hardware.DeviceLookup;
 import com.eliaslucky.mc_dos.api.hardware.Kernel;
 import com.eliaslucky.mc_dos.api.hardware.PeripheralBus;
@@ -166,7 +172,7 @@ public class MainframeKernel implements Kernel {
 	}
 
 	/** Every disk drive on the channel, in unit order. */
-	public List<DiskDriveBlockEntity> allDiskDrivers() {
+	public List<DiskDriveBlockEntity> allDiskDrives() {
 		List<DiskDriveBlockEntity> out = new ArrayList<>();
 		for (MainframeDeviceTable.Entry e : devices.all()) {
 			if (e.device() instanceof DiskDriveBlockEntity d) out.add(d);
@@ -295,14 +301,6 @@ public class MainframeKernel implements Kernel {
 
 	// --- JobContext implementations ---------------------------------------
 
-	// TODO: Now that i think about it. do we really need it?
-	/** A bare job context used when no step is active. */
-	private final class KernelJobContext implements JobContext {
-		@Override public void operatorMessage(String m) { bootLog.add(m); }
-		@Override public String readRecord(String dd) { return null; }
-		@Override public void writeRecord(String dd, String r) { writeListing(r); }
-	}
-
 	/**
 	 * Per-step job context. Walks forward through each inline DD
 	 * dataset on successive {@link #readRecord} calls.
@@ -315,16 +313,16 @@ public class MainframeKernel implements Kernel {
 
 		CursorContext(Job.Step step) {
 			this.step = step;
-			List<ChannelDevice> drives = allTapeDrives();
+			List<ChannelDevice> drivers = allTapeDrives();
 			int tapeIndex = 0;
 
 			for (Job.Dd dd : step.dds().values()) {
 				String unit = dd.unit() == null ? "" : dd.unit().toUpperCase(Locale.ROOT);
 
 				if (unit.startsWith("TAPE")) {
-					if (tapeIndex < drives.size()) {
+					if (tapeIndex < drivers.size()) {
 						TapeState ts = new TapeState();
-						ts.drive = drivers.get(tapeIndx++);
+						ts.drive = drivers.get(tapeIndex++);
 						ts.dsn = dd.dataset() != null ? dd.dataset() : "SCRATCH";
 						tapeByDd.put(dd.ddName(),ts);
 					}
@@ -332,7 +330,7 @@ public class MainframeKernel implements Kernel {
 				}
 
 				if (dd.kind() == Job.Dd.Kind.DATASET && dd.dataset() != null) {
-					String dns = dd.dataset().toUpperCase(Locale.ROOT);
+					String dsn = dd.dataset().toUpperCase(Locale.ROOT);
 					var found = catalog.lookup(dsn);
 					if (found.isPresent()) {
 						Dataset ds = found.get();
@@ -344,7 +342,7 @@ public class MainframeKernel implements Kernel {
 					}
 					else if (dd.disp() != null && dd.disp().isNew()) {
 						Dataset.Descriptor desc = new Dataset.Descriptor(
-								dsn, Dayaset.RecordFormat.FB, 80,0,
+								dsn, Dataset.RecordFormat.FB, 80,0,
 								Dataset.Dsorg.PS,
 								dd.unit() == null ? "SYSRES" : dd.unit(),
 								System.currentTimeMillis());
@@ -357,7 +355,7 @@ public class MainframeKernel implements Kernel {
 		@Override
 		public String readRecord(String ddName) {
 			String key = ddName.toUpperCase(Locale.ROOT); 
-			Job.Dd dd step.dds().get(key);
+			Job.Dd dd = step.dds().get(key);
 			if (dd == null) return null;
 
 			TapeState ts = tapeByDd.get(key);
@@ -372,9 +370,9 @@ public class MainframeKernel implements Kernel {
 			}
 
 			if (dd.kind() == Job.Dd.Kind.INLINE) {
-				int pos = positions.getOrDefault(ddName, 0);
+				int pos = readPositions.getOrDefault(ddName, 0);
 				if (pos >= dd.inline().size()) return null;
-				positions.put(ddName, pos + 1);
+				readPositions.put(ddName, pos + 1);
 				return dd.inline().get(pos);
 			}
 			return null;
@@ -408,7 +406,7 @@ public class MainframeKernel implements Kernel {
 
 		@Override
 		public void writeRecord(String ddName, String record) {
-			String key ddName.toUpperCase(Locale.ROOT);
+			String key= ddName.toUpperCase(Locale.ROOT);
 			Job.Dd dd = step.dds().get(key);
 
 			if (dd == null || dd.kind() == Job.Dd.Kind.SYSOUT) {
@@ -417,7 +415,7 @@ public class MainframeKernel implements Kernel {
 			}
 
 			TapeState ts = tapeByDd.get(key);
-			if (ts != null) { whiteTapeRecord(ts,record); return }
+			if (ts != null) { writeTapeRecord(ts,record); return; }
 
 			Dataset ds = datasetByDd.get(key);
 			if (ds != null) { ds.addRecord(record); return; }

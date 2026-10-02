@@ -1,6 +1,8 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.channel.*;
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,7 +25,7 @@ public class LinePrinterBlockEntity extends BlockEntity implements ChannelDevice
 	private int pageCount = 1;
 
 	public LinePrinterBlockEntity(BlockPos pos, BlockState state) {
-		super(ModBlockEntities.LINE_PRINTER.get(), pos, state);
+		super(AllBlockEntities.IBM_029_LINE_PRINTER.get(), pos, state);
 	}
 
 	// --- Output collection -------------------------------------------------

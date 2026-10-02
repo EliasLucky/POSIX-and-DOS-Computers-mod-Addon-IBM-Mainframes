@@ -62,12 +62,12 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		return sb.toString();
 	}
 
-	private static String dslist(MainframeKernel kernel, String filder) {
+	private static String dslist(MainframeKernel kernel, String filter) {
 		if (kernel.catalog() == null) return "IEE608I CATALOG NOT AVAILABLE";
 		var names = kernel.catalog().listAll();
 		if (names.isEmpty()) return "IEE609I CATALOG IS EMPTY";
 
-		String prefix = filder == null ? "" : filder.replace("*", "").trim();
+		String prefix = filter == null ? "" : filter.replace("*", "").trim();
 		StringBuilder sb = new StringBuilder("IEE608I CATALOG CONTENTS:");
 		int shown = 0;
 		for (String dsn : names) {
@@ -85,7 +85,7 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 			sb.append(String.format("%n  %-24s %-8s %s", dsn, volume, size < 0 ? "(not mounted)" : size + " records"));
 			shown++;
 		}
-		if (show == 0) return "IEE608I NO DATASETS MATCH '" + filter + "'";
+		if (shown == 0) return "IEE608I NO DATASETS MATCH '" + filter + "'";
 		sb.insert(0, "IEE608I " + shown + " DATASET(S) LISTED\n");
 		return sb.toString();
 	}

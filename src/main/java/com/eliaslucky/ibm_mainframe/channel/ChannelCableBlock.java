@@ -32,18 +32,8 @@ public class ChannelCableBlock extends Block {
 
 	private static final VoxelShape SHAPE = Block.box(4, 0, 4, 12, 2, 12);
 
-	public ChannelCableBlock() {
-		super(Properties.of()
-				.mapColor(MapColor.COLOR_BLACK)
-				.strength(0.4f)
-				.noCollission()
-				.noOcclusion()
-				.sound(net.minecraft.world.level.block.SoundType.WOOL));
-		registerDefaultState(stateDefinition.any()
-				.setValue(NORTH, false)
-				.setValue(SOUTH, false)
-				.setValue(EAST,  false)
-				.setValue(WEST,  false));
+	public ChannelCableBlock(Properties properties) {
+		super(properties);
 	}
 
 	@Override
