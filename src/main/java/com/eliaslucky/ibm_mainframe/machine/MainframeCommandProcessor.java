@@ -79,9 +79,15 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 			var opt = kernel.catalog().lookup(dsn);
 			if (opt.isPresent()) {
 				var ds = opt.get();
-				// TODO: FINISH IT UP
+				volume = ds.descriptor().volumeSerial();
+				size = ds.size();
 			}
+			sb.append(String.format("%n  %-24s %-8s %s", dsn, volume, size < 0 ? "(not mounted)" : size + " records"));
+			shown++;
 		}
+		if (show == 0) return "IEE608I NO DATASETS MATCH '" + filter + "'";
+		sb.insert(0, "IEE608I " + shown + " DATASET(S) LISTED\n");
+		return sb.toString();
 	}
 
 	private static String helpText() {
@@ -90,6 +96,8 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 				 START	   Read and run the next job from the card reader
 				 DEVICES   List channel-attached devices with unit addresses
 				 OUTPUT    View listings held because no printer is attached
+				 DSLIST    List catalogued datasets
+				           DSLIST MY.* to filter by prefix
 				 HELP	   Show this message
 			   """;
 	}
