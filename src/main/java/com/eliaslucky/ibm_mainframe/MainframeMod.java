@@ -1,9 +1,7 @@
-package com.eliaslucky.mc_dos;
+package com.eliaslucky.ibm_mainframe;
 
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
-import com.eliaslucky.mc_dos.network.ModMessages;
-import com.eliaslucky.mc_dos.registry.ModDrivers;
-import com.eliaslucky.mc_dos.registry.ModExecutables;
+import com.eliaslucky.ibm_mainframe.network.ModMessages;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.world.item.Item;
@@ -20,31 +18,23 @@ import org.slf4j.Logger;
 @Mod(Computers.MODID)
 public class Computers
 {
-	public static final String MODID = "mc_dos";
-	public static final String NAME = "MC-DOS Compputers";
+	public static final String MODID = "ibm_mainframes";
+	public static final String NAME = "IBM Mainframes addon for \"POSIX and DOS Computers mod\"";
 
 	public static final Logger LOGGER = LogUtils.getLogger();
 
 	public Computers(FMLJavaModLoadingContext context)
 	{
 		IEventBus modEventBus = context.getModEventBus();
-
-		//REGISTRATE.registerEventListeners(modEventBus);
-
         
 		AllCreativeModeTabs.register(modEventBus);
 		AllBlocks.BLOCKS.register(modEventBus);
+		AllBlocks.BLOCK_ITEMS.register(modEventBus);
 		AllBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 		AllItems.ITEMS.register(modEventBus);
-		// AllRecipeTypes.register(modEventBus)
        
 		modEventBus.addListener(this::commonSetup);
 		modEventBus.addListener(this::buildContents);
-		
-		//DriverRegistry.register("dos", "MCCMD", DosMccmdDriver::new);
-		// Later:
-		//DriverRegistry.register("unix", "MCCMD", UnixMccmdDriver::new);
-		//DriverRegistry.register("linux", "MCCMD", LinuxMccmdDriver::new);
         
 		MinecraftForge.EVENT_BUS.register(this);     
 	}
@@ -55,10 +45,10 @@ public class Computers
 
 	private void commonSetup(final FMLCommonSetupEvent event) {
 		event.enqueueWork(ModMessages::register);
-		event.enqueueWork(() -> {
-		    ModExecutables.register();
-		    ModDrivers.register();
-		});
+		//event.enqueueWork(() -> {
+		//    ModExecutables.register();
+		//    ModDrivers.register();
+		//});
 	}
 
 	public void buildContents(BuildCreativeModeTabContentsEvent event) {
@@ -72,6 +62,11 @@ public class Computers
 					if (blockItem != Items.AIR) {
 						event.accept(blockItem);	
 					}
+				}
+			}
+			if (item instanceof ICustomCreativeTab customTabItem) {
+				if (event.getTabKey() == customTabItem.getCreativeTab()) {
+					event.accept(customTabItem)
 				}
 			}
 		});

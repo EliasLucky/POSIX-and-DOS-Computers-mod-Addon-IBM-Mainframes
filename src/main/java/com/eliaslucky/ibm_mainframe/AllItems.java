@@ -1,4 +1,6 @@
-package com.eliaslucky.mc_dos;
+package com.eliaslucky.ibm_mainframe;
+
+import com.eliaslucky.ibm_mainframe.items.*;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -9,20 +11,27 @@ import net.minecraftforge.registries.RegistryObject;
 public class AllItems {
 	public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, Computers.MODID);
 
-	public static final RegistryObject<Item> WHITE_DESK_CABINET = ITEMS.register("blank:",
-			() -> new BlockItem(AllBlocks.WHITE_DESK_CABINET.get(), new Item.Properties())
+	public static final RegistryObject<Item> BLANK_CARD = ITEMS.register("blank_card",
+			() -> new BlankCardItem(new Item.Properties())
 		);
 
-	public static final RegistryObject<Item> BLACK_DESK_CABINET = ITEMS.register("black_desk_cabinet",
-			() -> new BlockItem(AllBlocks.BLACK_DESK_CABINET.get(), new Item.Properties())
+	public static final RegistryObject<Item> PUNCH_CARD = ITEMS.register("punch_card",
+			() -> new PunchCardItem(new Item.Properties())
 		);
 		
-	/* PC STUFF */
-	public static final RegistryObject<Item> WHITE_IBM_PC_AT_COMPUTER = ITEMS.register("white_ibm_pcat_computer",
-			() -> new BlockItem(AllBlocks.WHITE_IBM_PC_AT_COMPUTER.get(), new Item.Properties())
+	public static final RegistryObject<Item> CARD_DECK = ITEMS.register("card_deck",
+			() -> new CardDeckItem(new Item.Properties())
 		);
 
-	public static final RegistryObject<Item> HARDWARE_LPC_MCCMD_BLOCK = ITEMS.register("hardware_lpc_mccmd",
-			() -> new BlockItem(AllBlocks.HARDWARE_LPC_MCCMD_BLOCK.get(), new Item.Properties())
+	public static final RegistryObject<Item> PRINTER_LISTING_PAPER = ITEMS.register("printer_listing_paper",
+			() -> new ListingItem(new Item.Properties())
+		);
+
+	public static final RegisterObject<Item> MAGNETIC_TAPE = ITEMS.register("magnetic_tape",
+			() -> new MagneticTapeItem(new Item.Properties())
+		);
+
+	public static final RegistryObject<Item> DISK_PACK = ITEMS.register("disk_pack",
+			() -> new DiskPackItem(new Item.Properties())
 		);
 }

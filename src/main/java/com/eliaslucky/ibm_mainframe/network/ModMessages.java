@@ -1,6 +1,6 @@
-package com.eliaslucky.mc_dos.network;
+package com.eliaslucky.ibm_mainframe.network;
 
-import com.eliaslucky.mc_dos.Computers;
+import com.eliaslucky.ibm_mainframe.MainframeMod;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -18,7 +18,7 @@ public class ModMessages {
 
 	public static void register() {
 		SimpleChannel net = NetworkRegistry.ChannelBuilder
-				.named(ResourceLocation.fromNamespaceAndPath(Computers.MODID, "messages"))
+				.named(ResourceLocation.fromNamespaceAndPath(MainframeMod.MODID, "messages"))
 				.networkProtocolVersion(() -> "1.0")
 				.clientAcceptedVersions(s -> true)
 				.serverAcceptedVersions(s -> true)
@@ -27,47 +27,30 @@ public class ModMessages {
 		INSTANCE = net;
 
 		// CLIENT -> SERVER
-		net.messageBuilder(ServerboundCommandPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
-				.decoder(ServerboundCommandPacket::new)
-				.encoder(ServerboundCommandPacket::encode)
-				.consumerMainThread(ServerboundCommandPacket::handle)
+		net.messageBuilder(ServerboundConsoleCommandPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+				.decoder(ServerboundConsoleCommandPacket::new)
+				.encoder(ServerboundConsoleCommandPacket::encode)
+				.consumerMainThread(ServerboundConsoleCommandPacket::handle)
 				.add();
 
-		net.messageBuilder(ServerboundCloseTerminalPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
-				.decoder(ServerboundCloseTerminalPacket::new)
-				.encoder(ServerboundCloseTerminalPacket::encode)
-				.consumerMainThread(ServerboundCloseTerminalPacket::handle)
+		net.messageBuilder(ServerboundConsoleStateRequestPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+				.decoder(ServerboundConsoleStateRequestPacket::new)
+				.encoder(ServerboundConsoleStateRequestPacket::encode)
+				.consumerMainThread(ServerboundConsoleStateRequestPacket::handle)
 				.add();
 
-		net.messageBuilder(ServerboundFileWritePacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
-				.decoder(ServerboundFileWritePacket::new)
-				.encoder(ServerboundFileWritePacket::encode)
-				.consumerMainThread(ServerboundFileWritePacket::handle)
+		net.messageBuilder(ServerboundPunchDeckPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
+				.decoder(ServerboundPunchDeckPacket::new)
+				.encoder(ServerboundPunchDeckPacket::encode)
+				.consumerMainThread(ServerboundPunchDeckPacket::handle)
 				.add();
-		
-		net.messageBuilder(ServerboundBootActionPacket.class, id(), NetworkDirection.PLAY_TO_SERVER)
-			.decoder(ServerboundBootActionPacket::new)
-			.encoder(ServerboundBootActionPacket::encode)
-			.consumerMainThread(ServerboundBootActionPacket::handle)
-			.add();
-		
+				
 		// SERVER -> CLIENT
-		net.messageBuilder(ClientboundTerminalOutputPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
-			.decoder(ClientboundTerminalOutputPacket::new)
-			.encoder(ClientboundTerminalOutputPacket::encode)
-			.consumerMainThread(ClientboundTerminalOutputPacket::handle)
-			.add();
-		
-		net.messageBuilder(ClientboundFileWriteResultPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
-			.decoder(ClientboundFileWriteResultPacket::new)
-			.encoder(ClientboundFileWriteResultPacket::encode)
-			.consumerMainThread(ClientboundFileWriteResultPacket::handle)
-			.add();
-		net.messageBuilder(ClientboundTerminalStatePacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
-			.decoder(ClientboundTerminalStatePacket::new)
-			.encoder(ClientboundTerminalStatePacket::encode)
-			.consumerMainThread(ClientboundTerminalStatePacket::handle)
-			.add();
+		net.messageBuilder(ClientboundConsoleOutputPacket.class, id(), NetworkDirection.PLAY_TO_CLIENT)
+			.decoder(ClientboundConsoleOutputPacket::new)
+			.encoder(ClientboundConsoleOutputPacket::encode)
+			.consumerMainThread(ClientboundConsoleOutputPacket::handle)
+			.add();	
 	}
 
 	public static void sendToServer(Object message) {

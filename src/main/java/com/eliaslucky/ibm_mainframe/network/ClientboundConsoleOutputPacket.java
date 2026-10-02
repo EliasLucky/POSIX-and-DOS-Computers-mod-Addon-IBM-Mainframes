@@ -10,16 +10,18 @@ import java.util.function.Supplier;
 
 import com.eliaslucky.mc_dos.client.ComputerTerminalScreen;
 
-public class ClientboundTerminalOutputPacket {
+public class ClientboundConsoleOutputPacket {
+	public static final int MAX_LINES = 500;
+
 	private final String output;
 	private final String currentPath;
 
-	public ClientboundTerminalOutputPacket(String output, String currentPath) {
+	public ClientboundConsoleOutputPacket(String output, String currentPath) {
 		this.output = output;
 		this.currentPath = currentPath;
 	}
 
-	public ClientboundTerminalOutputPacket(FriendlyByteBuf buffer) {
+	public ClientboundConsoleOutputPacket(FriendlyByteBuf buffer) {
 		this.output = buffer.readUtf();
 		this.currentPath = buffer.readUtf();
 	}
@@ -33,8 +35,9 @@ public class ClientboundTerminalOutputPacket {
 		NetworkEvent.Context ctx = contextSupplier.get();
 		ctx.enqueueWork(() -> {
 			DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-				if (Minecraft.getInstance().screen instanceof ComputerTerminalScreen screen) {
-					screen.appendOutput(this.output, this.currentPath);
+				if (Minecraft.getInstance().screen instanceof ConsoleScreen screen) {
+					// First packet replaces the buffer; subsequent packets append.
+					cs.setBuffer(lines);
 				}
 			});
 		});

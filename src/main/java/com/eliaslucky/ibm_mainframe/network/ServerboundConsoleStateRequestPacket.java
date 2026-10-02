@@ -1,4 +1,4 @@
-package com.eliaslucky.mc_dos.network;
+package com.eliaslucky.ibm_mainframe.network;
 
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -8,14 +8,14 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-public class ServerboundCloseTerminalPacket {
+public class ServerboundConsoleStateRequestPacket {
 	private final BlockPos pos;
 
-	public ServerboundCloseTerminalPacket(BlockPos pos) {
+	public ServerboundConsoleStateRequestPacket(BlockPos pos) {
 		this.pos = pos;
 	}
 
-	public ServerboundCloseTerminalPacket(FriendlyByteBuf buffer) {
+	public ServerboundConsoleStateRequestPacket(FriendlyByteBuf buffer) {
 		this.pos = buffer.readBlockPos();
 	}
 
@@ -27,8 +27,8 @@ public class ServerboundCloseTerminalPacket {
 		NetworkEvent.Context ctx = contextSupplier.get();
 		ctx.enqueueWork(() -> {
 			ServerPlayer player = ctx.getSender();
-			if (player != null && player.level().getBlockEntity(this.pos) instanceof ComputerBlockEntity computer) {
-				computer.releaseUser(player);
+			if (player != null && player.level().getBlockEntity(this.pos) instanceof ConsoleBlockEntity computer) {
+				ModMessages.sendToPlayer(new ClientboundConsoleOutputPacket(pos, c.getBuffer()), player);
 			}
 		});
 		ctx.setPacketHandled(true);

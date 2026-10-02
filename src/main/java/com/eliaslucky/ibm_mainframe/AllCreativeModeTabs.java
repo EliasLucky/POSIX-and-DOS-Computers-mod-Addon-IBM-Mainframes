@@ -1,4 +1,4 @@
-package com.eliaslucky.mc_dos;
+package com.eliaslucky.ibm_mainframe;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -13,14 +13,8 @@ public class AllCreativeModeTabs {
 	private static final DeferredRegister<CreativeModeTab> REGISTER = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Computers.MODID);
 
 	public static final RegistryObject<CreativeModeTab> BASE_CREATIVE_TAB = REGISTER.register("base", () -> CreativeModeTab.builder()
-		.title(Component.translatable("itemGroup.mc_dos.base"))
-		.icon(() -> new ItemStack(AllBlocks.WHITE_IBM_PC_AT_COMPUTER.get()))
-		.build()
-	);
-
-	public static final RegistryObject<CreativeModeTab> HARDWARE_CREATIVE_TAB = REGISTER.register("peripherals", () -> CreativeModeTab.builder()
-		.title(Component.translatable("itemGroup.mc_dos.peripherals"))
-		.icon(() -> new ItemStack(AllBlocks.HARDWARE_LPC_MCCMD_BLOCK.get()))
+		.title(Component.translatable("itemGroup.ibm_mainframe.base"))
+		.icon(() -> new ItemStack(AllBlocks.IBM_MAINFRAME_S360.get()))
 		.build()
 	);
 
