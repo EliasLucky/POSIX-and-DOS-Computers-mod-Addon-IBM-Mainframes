@@ -1,5 +1,7 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
+import com.eliaslucky.ibm_mainframe.client.KeypunchScreen;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;

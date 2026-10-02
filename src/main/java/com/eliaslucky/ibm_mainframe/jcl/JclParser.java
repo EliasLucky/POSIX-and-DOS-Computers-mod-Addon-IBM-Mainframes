@@ -8,21 +8,23 @@ import java.util.Map;
 
 /**
  * Parses an OS/360-style job stream from a flat list of 80-column
- * card images. Every card arrives as one string; sequence numbers in
- * columns 73–80 are ignored.
+ * card images. Sequence numbers in columns 73–80 are ignored.
  *
- * Recognized syntax:
+ * <p>Recognized syntax:
  * <ul>
  *	 <li>{@code //NAME JOB ...} starts a job</li>
  *	 <li>{@code //NAME EXEC PGM=prog} starts a step</li>
  *	 <li>{@code //DDNAME DD ...} declares a dataset for the step</li>
  *	 <li>{@code //DDNAME DD *} followed by data cards and {@code /*}</li>
- *	 <li>{@code //} ends the job</li>
+ *	 <li>{@code //} alone ends the job</li>
+ *	 <li>{@code //*} is a comment; the whole card is ignored</li>
  * </ul>
  *
- * <p>Anything the parser doesn't understand is skipped, but only
- * cards that begin with {@code //} in columns 1–2 are treated as JCL.
- * Other cards inside an inline data block are data.
+ * <p>Not yet supported: multi-card continuation (a JCL statement
+ * ending in a comma to continue on the next card), catalogued
+ * procedures ({@code EXEC MYPROC}), and quoted values containing
+ * embedded spaces. All three are rare in hand-written decks and can
+ * be added when a specific need appears.
  *
  * <p>Errors are collected rather than thrown: a malformed job is
  * still produced with whatever could be understood, so the operator
@@ -34,6 +36,9 @@ public final class JclParser {
 	/** Result of a parse: jobs found plus warnings. */
 	public record Result(List<Job> jobs, List<String> warnings) {}
 
+	/** Internal: a parsed job plus the index of the next card to read. */
+	private record JobParse(Job job, int nextIndex) {}
+
 	public static Result parse(List<String> cards) {
 		List<Job> jobs = new ArrayList<>();
 		List<String> warnings = new ArrayList<>();
@@ -42,28 +47,27 @@ public final class JclParser {
 		while (i < cards.size()) {
 			String card = cards.get(i);
 
-			// Seek the next JOB card.
-			if (!isJcl(card) || !hasKeyword(card, "JOB")) {
+			// Skip blank lines, comments, and non-JCL cards until the
+			// next JOB statement.
+			if (!isJcl(card) || isComment(card) || !hasKeyword(card, "JOB")) {
 				i++;
 				continue;
 			}
 
-			// Parse one job from `i` until a bare `//` card.
-			Job job = parseJob(cards, i, warnings);
-			if (job != null) jobs.add(job);
-
-			// Advance past the job.
-			while (i < cards.size()) {
-				String c = cards.get(i++);
-				if (isJcl(c) && c.trim().equals("//")) break;
+			JobParse jp = parseJob(cards, i, warnings);
+			if (jp == null) {
+				i++;
+				continue;
 			}
+			jobs.add(jp.job());
+			i = jp.nextIndex();
 		}
 		return new Result(jobs, warnings);
 	}
 
 	// --- Internals ---------------------------------------------------------
 
-	private static Job parseJob(List<String> cards, int start, List<String> warnings) {
+	private static JobParse parseJob(List<String> cards, int start, List<String> warnings) {
 		String jobCard = cards.get(start);
 		String jobName = jobNameFrom(jobCard);
 		if (jobName == null) {
@@ -77,23 +81,31 @@ public final class JclParser {
 		while (i < cards.size()) {
 			String card = cards.get(i);
 
-			if (isJcl(card) && card.trim().equals("//")) break;
-
+			// End of job.
+			if (isJcl(card) && card.trim().equals("//")) {
+				i++;
+				break;
+			}
+			// Skip comments and blank cards.
+			if (isComment(card) || card.isBlank()) { i++; continue; }
+			// Non-JCL cards between statements are stray; skip them.
 			if (!isJcl(card)) { i++; continue; }
 
-			// //NAME EXEC PGM=...
 			if (hasKeyword(card, "EXEC")) {
-				Job.Step step = parseStep(cards, i, warnings);
-				if (step != null) steps.add(step.step());
-				i = step == null ? i + 1 : step.nextIndex();
+				StepParse sp = parseStep(cards, i, warnings);
+				if (sp != null) {
+					steps.add(sp.step());
+					i = sp.nextIndex();
+				} else {
+					i++;
+				}
 				continue;
 			}
 
-			// Any other // card without a current step is ignored.
 			i++;
 		}
 
-		return new Job(jobName, List.copyOf(steps));
+		return new JobParse(new Job(jobName, List.copyOf(steps)), i);
 	}
 
 	private record StepParse(Job.Step step, int nextIndex) {}
@@ -101,11 +113,11 @@ public final class JclParser {
 	private static StepParse parseStep(List<String> cards, int start, List<String> warnings) {
 		String execCard = cards.get(start);
 		String[] fields = splitJcl(execCard);
-		// fields[0] = step name, fields[1] = EXEC, fields[2..] = params
 		if (fields.length < 2) {
 			warnings.add("Malformed EXEC: " + execCard);
 			return null;
 		}
+
 		String stepName = fields[0];
 		String program = null;
 		for (int f = 2; f < fields.length; f++) {
@@ -123,15 +135,17 @@ public final class JclParser {
 
 		while (i < cards.size()) {
 			String card = cards.get(i);
+
+			if (isComment(card)) { i++; continue; }
 			if (!isJcl(card)) break;
 			if (card.trim().equals("//")) break;
 			if (hasKeyword(card, "EXEC") || hasKeyword(card, "JOB")) break;
 
 			if (hasKeyword(card, "DD")) {
-				DdParse dd = parseDd(cards, i);
-				if (dd != null) {
-					dds.put(dd.dd().ddName(), dd.dd());
-					i = dd.nextIndex();
+				DdParse dp = parseDd(cards, i);
+				if (dp != null) {
+					dds.put(dp.dd().ddName(), dp.dd());
+					i = dp.nextIndex();
 					continue;
 				}
 			}
@@ -147,7 +161,6 @@ public final class JclParser {
 	private static DdParse parseDd(List<String> cards, int start) {
 		String card = cards.get(start);
 		String[] fields = splitJcl(card);
-		// fields[0] = DDNAME, fields[1] = DD, fields[2..] = params
 		if (fields.length < 2) return null;
 		String ddName = fields[0].toUpperCase(Locale.ROOT);
 
@@ -163,7 +176,9 @@ public final class JclParser {
 					i++;
 				}
 				return new DdParse(new Job.Dd(
-						ddName, Job.Dd.Kind.INLINE, null, null, List.copyOf(data), Job.Dd.Disp.TEMP, null), i);
+						ddName, Job.Dd.Kind.INLINE,
+						null, null, List.copyOf(data),
+						Job.Dd.Disp.TEMP, null), i);
 			}
 		}
 
@@ -171,27 +186,39 @@ public final class JclParser {
 		Job.Dd.Disp disp = null;
 		for (int f = 2; f < fields.length; f++) {
 			String up = fields[f].toUpperCase(Locale.ROOT);
-			if (up.startsWith("DSN=")) dataset = fields[f].substring(4);
-			if (up.startsWith("SYSOUT=")) sysout = fields[f].substring(7);
-			if (up.startsWith("UNIT=")) unit = fields[f].substring(5);
-			if (up.startsWith("DISP=")) disp = Job.Dd.Disp.parse(fields[f].substring(5));
+			if (up.startsWith("DSN="))	  dataset = fields[f].substring(4);
+			if (up.startsWith("SYSOUT=")) sysout  = fields[f].substring(7);
+			if (up.startsWith("UNIT="))   unit	  = fields[f].substring(5);
+			if (up.startsWith("DISP="))   disp	  = Job.Dd.Disp.parse(fields[f].substring(5));
 		}
+
 		if (dataset != null) {
 			return new DdParse(new Job.Dd(
-					ddName, Job.Dd.Kind.DATASET, dataset, null, null, disp == null ? Job.Dd.Disp.OLD : disp, unit), start + 1);
+					ddName, Job.Dd.Kind.DATASET, dataset, null, null,
+					disp == null ? Job.Dd.Disp.OLD : disp, unit), start + 1);
 		}
 		if (sysout != null) {
 			return new DdParse(new Job.Dd(
-					ddName, Job.Dd.Kind.SYSOUT, null, sysout, null, null, unit), start + 1);
+					ddName, Job.Dd.Kind.SYSOUT, null, sysout, null,
+					null, unit), start + 1);
 		}
 		return new DdParse(new Job.Dd(
-				ddName, Job.Dd.Kind.OTHER, null, null, null, disp, unit), start + 1);
+				ddName, Job.Dd.Kind.OTHER, null, null, null,
+				disp, unit), start + 1);
 	}
 
 	// --- Card helpers ------------------------------------------------------
 
+	/** A JCL card: {@code //} in columns 1–2. */
 	private static boolean isJcl(String card) {
 		return card.length() >= 2 && card.charAt(0) == '/' && card.charAt(1) == '/';
+	}
+
+	/** A JCL comment card: {@code //*} in columns 1–3. */
+	private static boolean isComment(String card) {
+		return card.length() >= 3
+				&& card.charAt(0) == '/' && card.charAt(1) == '/'
+				&& card.charAt(2) == '*';
 	}
 
 	private static boolean hasKeyword(String card, String kw) {
@@ -207,7 +234,7 @@ public final class JclParser {
 
 	/**
 	 * Split a JCL card on whitespace and commas, ignoring columns
-	 * 73–80 (sequence numbers) and the leading {@code //}.
+	 * 73–80 and the leading {@code //}.
 	 */
 	private static String[] splitJcl(String card) {
 		int end = Math.min(card.length(), 72);

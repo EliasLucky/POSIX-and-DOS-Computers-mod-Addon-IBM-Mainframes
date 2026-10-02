@@ -1,5 +1,7 @@
 package com.eliaslucky.ibm_mainframe.items;
 
+import com.eliaslucky.ibm_mainframe.AllItems;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -17,7 +19,7 @@ public class PunchCardItem extends Item {
 	}
 
 	public static ItemStack of(String content) {
-		ItemStack stack = new ItemStack(ModItems.PUNCH_CARD.get());
+		ItemStack stack = new ItemStack(AllItems.PUNCH_CARD.get());
 		String clamped = content == null ? "" : content;
 		if (clamped.length() > COLUMNS) clamped = clamped.substring(0, COLUMNS);
 		// Right-pad to 80 columns so every card has identical width.

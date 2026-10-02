@@ -1,0 +1,5 @@
+OS/360 with SYSOUT allocation when running next job would abort if there's no printer.
+
+Because this is a mod it would be inconvenient for the player. Therefore, the output is held in memory and operator can view it through a command OUTPUT.
+
+
