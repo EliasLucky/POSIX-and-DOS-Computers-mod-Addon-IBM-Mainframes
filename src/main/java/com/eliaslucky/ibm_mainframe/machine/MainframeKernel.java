@@ -243,7 +243,21 @@ public class MainframeKernel implements Kernel {
 	}
 
 	public boolean hasOrphanOutput() { return !pendingOperator.isEmpty(); }
+	/** Peek at the pending operator buffer without consuming it. */
+	public List<String> peekOperatorBuffer() {
+		return List.copyOf(pendingOperator);
+	}
 
+	/** One-line human-readable status summary. */
+	public String statusLine() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(bootOk ? "IPL COMPLETE" : "OFF");
+		sb.append("  |	Devices: ").append(devices.all().size());
+		sb.append("  Console: ").append(console != null ? "yes" : "no");
+		sb.append("  Printer: ").append(printer() != null ? "yes" : "no");
+		sb.append("  Reader: ").append(reader() != null ? "yes" : "no");
+		return sb.toString();
+	}
 	// --- Accessors --------------------------------------------------------
 
 	public MainframeDeviceTable deviceTable() { return devices; }

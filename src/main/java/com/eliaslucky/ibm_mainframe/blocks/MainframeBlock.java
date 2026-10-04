@@ -1,8 +1,11 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
+import java.util.List;
+
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
 import com.eliaslucky.ibm_mainframe.machine.MainframeType;
+import com.eliaslucky.mc_dos.api.hardware.Kernel;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import com.eliaslucky.mc_dos.blocks.computer.IBMComputerBlock;
 
@@ -37,11 +40,11 @@ public class MainframeBlock extends IBMComputerBlock {
 		super.onPlace(state, level, pos, old, moved);
 		if (!level.isClientSide()) {
 			ChannelNetworkManager.invalidateLevel(level);
-		    for (Direction d : Direction.values()) {
-		        if (level.getBlockEntity(pos.relative(d)) instanceof ConsoleBlockEntity c) {
-		            c.tryBind();
-		        }
-		    }
+			for (Direction d : Direction.values()) {
+				if (level.getBlockEntity(pos.relative(d)) instanceof ConsoleBlockEntity c) {
+					c.tryBind();
+				}
+			}
 		}
 	}
 
@@ -52,22 +55,45 @@ public class MainframeBlock extends IBMComputerBlock {
 	}
 	@Override
 	public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-	    if (!level.isClientSide()) {
-	        BlockEntity be = level.getBlockEntity(pos);
-	        if (be instanceof ComputerBlockEntity cpu) {
-	            StringBuilder sb = new StringBuilder();
-	            sb.append(cpu.getMachineType().modelName());
-	            sb.append(" -- ");
-	            sb.append(cpu.getBootState().name());
+		if (level.isClientSide()) return InteractionResult.SUCCESS;
 
-	            if (cpu.getKernel() instanceof MainframeKernel k) {
-	                sb.append("  Devices: ").append(k.deviceTable().all().size());
-	                sb.append("  Console: ")
-	                  .append(k.hasConsole() ? "attached" : "NOT ATTACHED");
-	            }
-	            player.displayClientMessage(Component.literal(sb.toString()), true);
-	        }
-	    }
-	    return InteractionResult.sidedSuccess(level.isClientSide());
+		BlockEntity be = level.getBlockEntity(pos);
+		if (!(be instanceof ComputerBlockEntity cpu)) return InteractionResult.PASS;
+
+		Kernel k = cpu.getKernel();
+		if (!(k instanceof MainframeKernel mk)) {
+			player.displayClientMessage(Component.literal(
+					cpu.getMachineType().modelName() + " -- " + cpu.getBootState().name()),
+					false);
+			return InteractionResult.SUCCESS;
+		}
+
+		// Status line.
+		player.displayClientMessage(Component.literal(mk.statusLine()), false);
+
+		// Buffered operator log (up to the last 50 lines to avoid spam).
+		List<String> pending = mk.peekOperatorBuffer();
+		if (!pending.isEmpty()) {
+			int start = Math.max(0, pending.size() - 50);
+			player.displayClientMessage(Component.literal(
+					"--- operator log (" + (pending.size() - start) + " of "
+							+ pending.size() + " lines) ---"), false);
+			for (int i = start; i < pending.size(); i++) {
+				player.displayClientMessage(Component.literal(pending.get(i)), false);
+			}
+		}
+
+		// Hint about what's missing.
+		if (!mk.hasConsole()) {
+			player.displayClientMessage(Component.literal(
+					"No console attached. Place a console block adjacent to this CPU."),
+					false);
+		} else {
+			player.displayClientMessage(Component.literal(
+					"Console attached. Right-click the console to operate."),
+					false);
+		}
+
+		return InteractionResult.SUCCESS;
 	}
 }
