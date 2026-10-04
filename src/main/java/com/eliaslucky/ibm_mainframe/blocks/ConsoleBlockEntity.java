@@ -33,17 +33,36 @@ import java.util.List;
  */
 public class ConsoleBlockEntity extends BlockEntity {
 	private static final int MAX_BUFFER_LINES = 500;
+    /** Server ticks between automatic re-bind attempts when unbound. */
+    private static final int REBIND_INTERVAL = 40;
 
-	private final List<String> buffer = new ArrayList<>();
-	private BlockPos boundCpu = null;
+    private final List<String> buffer = new ArrayList<>();
+    private BlockPos boundCpu = null;
+    private int rebindCountdown = 0;
 
 	public ConsoleBlockEntity(BlockPos pos, BlockState state) {
 		super(AllBlockEntities.IBM_1035_CONSOLE.get(), pos, state);
 	}
 
+    // --- Tick -------------------------------------------------------------
+
+    /**
+     * Server-only. If unbound, retry periodically so a mainframe
+     * placed *after* the console is picked up without a manual
+     * right-click.
+     */
+    public void tick() {
+        if (level == null || level.isClientSide()) return;
+        if (boundCpu != null) return;
+
+        if (--rebindCountdown > 0) return;
+        rebindCountdown = REBIND_INTERVAL;
+        tryBind();
+    }
+
 	// --- Binding ---------------------------------------------------------
 
-	/** Look for an adjacent mainframe and bind to it. Idempotent. */
+	/** Look for an adjacent mainframe and bind to it.*/
 	public void tryBind() {
 		if (level == null || level.isClientSide()) return;
 
@@ -70,13 +89,28 @@ public class ConsoleBlockEntity extends BlockEntity {
 
 	/** Detach from the currently bound CPU, if any. */
 	public void unbind() {
+        if (level == null || level.isClientSide()) { boundCpu = null; return; }
+        if (boundCpu == null) return;
+
 		if (boundCpu == null || level == null) return;
 		BlockEntity cur = level.getBlockEntity(boundCpu);
 		if (cur instanceof ComputerBlockEntity cpu&& cpu.getKernel() instanceof MainframeKernel k) {
 			k.detachConsole(this);
 		}
 		boundCpu = null;
+        setChanged();
 	}
+	
+	/**
+     * One-way notification from the kernel: "another console has taken
+     * over, stop believing you are the operator display." Does not
+     * call back into the kernel — the kernel already replaced its
+     * reference.
+     */
+    public void detachFromKernel() {
+        boundCpu = null;
+        setChanged();
+    }
 
 	public boolean isBound() { return boundCpu != null; }
 	public BlockPos getBoundCpu() { return boundCpu; }
@@ -94,12 +128,16 @@ public class ConsoleBlockEntity extends BlockEntity {
 	}
 
 	public void appendLines(List<String> lines) {
+        if (lines == null) return;
 		for (String l : lines) append(l);
 	}
 
 	public void clear() {
 		buffer.clear();
 		setChanged();
+        if (level != null && !level.isClientSide()) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        }
 	}
 
 	public List<String> getBuffer() { return List.copyOf(buffer); }
@@ -126,9 +164,7 @@ public class ConsoleBlockEntity extends BlockEntity {
 
 		// Binding is re-derived, not trusted. Keep the position hint
 		// in case the CPU is at the same coordinates after reload.
-		if (tag.contains("CpuPos")) {
-			boundCpu = BlockPos.of(tag.getLong("CpuPos"));
-		}
+		boundCpu = tag.contains("CpuPos") ? BlockPos.of(tag.getLong("CpuPos")) : null;
 	}
 
 	/** Called on world load; the CPU may or may not still exist. */

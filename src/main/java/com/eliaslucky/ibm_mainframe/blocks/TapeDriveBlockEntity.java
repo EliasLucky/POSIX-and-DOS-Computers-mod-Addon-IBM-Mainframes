@@ -1,5 +1,6 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
 import com.eliaslucky.ibm_mainframe.channel.*;
 import com.eliaslucky.ibm_mainframe.items.MagneticTapeItem;
 
@@ -38,7 +39,7 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 	private boolean hasTape = false;
 
 	public TapeDriveBlockEntity(BlockPos pos, BlockState state) {
-		super(ModBlockEntities.TAPE_DRIVE.get(), pos, state);
+		super(AllBlockEntities.TAPE_DRIVE.get(), pos, state);
 	}
 
 	// --- Media handling ---------------------------------------------------
