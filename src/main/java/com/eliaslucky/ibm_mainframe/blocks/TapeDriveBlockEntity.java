@@ -38,6 +38,41 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 	private int currentRecord = 0;
 	private boolean hasTape = false;
 
+	/** Tape motion states. Speeds are relative, not physical units. */
+	public enum ReelState {
+		IDLE,		 // no tape movement
+		THREADING,	 // brief spin on insert to seat the tape
+		READING,	 // normal read speed
+		WRITING,	 // normal write speed
+		SEARCHING,	 // fast forward through records
+		REWINDING,	 // full reverse
+		STOPPING	 // decelerating to idle
+	}
+
+	private ReelState reelState = ReelState.IDLE;
+	private long  stateChangedMillis = 0L;
+	private long  lastOpMillis		 = 0L;
+	private long  lastTickMillis	 = 0L;
+	private float currentSpeed		 = 0.0f;   // 0.0 .. ~4.5
+	private float leftAngle			 = 0.0f;   // degrees, cumulative
+	private float rightAngle		 = 0.0f;   // degrees, cumulative
+	private float tapeProgress		 = 0.0f;   // 0.0 = start of tape, 1.0 = end
+
+	/** Set on the client when a sync packet is received. Not persisted. */
+	private transient long lastClientSyncMillis = 0L;
+
+	/** Hub-to-full radius ratio. A 0.35 hub looks right for a 2401. */
+	private static final float HUB_RATIO = 0.35f;
+
+	/** Degrees per second per speed unit, at radius 1.0. */
+	private static final float BASE_ANGULAR = 90.0f;
+
+	/** Acceleration in speed units per second. Reaches full in ~0.5 s. */
+	private static final float ACCEL = 4.0f;
+
+	/** Progress per speed unit per second, for tape position. */
+	private static final float PROGRESS_RATE = 0.05f;
+
 	public TapeDriveBlockEntity(BlockPos pos, BlockState state) {
 		super(AllBlockEntities.TAPE_DRIVE.get(), pos, state);
 	}
@@ -63,6 +98,9 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 					(int) (System.currentTimeMillis() & 0xFFFFF)).toUpperCase();
 		}
 		setChanged();
+		recomputeProgress();
+		setReelState(ReelState.THREADING);
+		lastOpMillis = System.currentTimeMillis();
 		return true;
 	}
 
@@ -75,6 +113,8 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 		currentFile = 0;
 		currentRecord = 0;
 		setChanged();
+		setReelState(ReelState.IDLE);
+		currentSpeed = 0f;
 		return out;
 	}
 
@@ -103,6 +143,10 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 	}
 
 	private ChannelResult readRecord() {
+		if (reelState != ReelState.READING && reelState != ReelState.SEARCHING) {
+			setReelState(ReelState.READING);		
+		}
+		markOperation();
 		if (currentFile >= files.size()) return ChannelResult.UNIT_EXCEPTION;
 		List<String> file = files.get(currentFile);
 		if (currentRecord >= file.size()) return ChannelResult.UNIT_EXCEPTION;
@@ -120,6 +164,10 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 	}
 
 	private ChannelResult writeRecord(byte[] payload) {
+		if (reelState != ReelState.WRITING) {
+			setReelState(ReelState.WRITING);
+		}
+		markOperation();
 		if (payload == null) return ChannelResult.REJECT;
 		String rec = new String(payload, StandardCharsets.US_ASCII);
 
@@ -141,6 +189,8 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 		return switch (p[0]) {
 			case ChannelControl.REWIND -> {
 				currentFile = 0; currentRecord = 0;
+				setReelState(ReelState.REWINDING);
+				markOperation();
 				setChanged();
 				yield ChannelResult.OK;
 			}
@@ -160,6 +210,8 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 					currentFile++;
 					currentRecord = 0;
 				}
+				setReelState(ReelState.SEARCHING);
+				markOperation();
 				setChanged();
 				yield ChannelResult.OK;
 			}
@@ -168,6 +220,8 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 					currentFile++;
 					currentRecord = 0;
 				}
+				setReelState(ReelState.SEARCHING);
+				markOperation();
 				setChanged();
 				yield ChannelResult.OK;
 			}
@@ -181,6 +235,125 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 		if (currentFile >= files.size()) s |= 0x01;						  // end of tape
 		else if (currentRecord >= files.get(currentFile).size()) s |= 0x02; // tape mark
 		return new byte[] { (byte) s };
+	}
+
+	// --- Reel state accessors -------------------------------------------
+
+	public ReelState getReelState()  { return reelState; }
+	public long		 getStateChangedMillis() { return stateChangedMillis; }
+	public float	 getCurrentSpeed()		 { return currentSpeed; }
+	public float	 getLeftAngle()			 { return leftAngle; }
+	public float	 getRightAngle()		 { return rightAngle; }
+	public float	 getTapeProgress()		 { return tapeProgress; }
+	public long		 getLastClientSyncMillis() { return lastClientSyncMillis; }
+
+	// --- State transitions ----------------------------------------------
+
+	private void setReelState(ReelState s) {
+		if (this.reelState == s) return;
+		this.reelState = s;
+		this.stateChangedMillis = System.currentTimeMillis();
+		setChanged();
+		if (level != null && !level.isClientSide()) {
+			level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 2);
+		}
+	}
+
+	private void markOperation() {
+		this.lastOpMillis = System.currentTimeMillis();
+	}
+
+	// --- Per-tick motion ------------------------------------------------
+
+	/** Target speed for a state, in abstract units. */
+	private static float targetSpeedFor(ReelState s) {
+		return switch (s) {
+			case IDLE, STOPPING		 -> 0.0f;
+			case THREADING			 -> 0.3f;
+			case READING, WRITING	 -> 1.0f;
+			case SEARCHING			 -> 2.0f;
+			case REWINDING			 -> 4.5f;
+		};
+	}
+
+	/** Radius of a reel that holds fraction {@code p} of the tape. */
+	private static float reelRadius(float p) {
+		float h = HUB_RATIO;
+		return (float) Math.sqrt(h * h + p * (1.0f - h * h));
+	}
+
+	/** Server-side tick. Called from the block's ticker once per game tick. */
+	public void tick() {
+		if (level == null || level.isClientSide()) return;
+
+		long now = System.currentTimeMillis();
+		if (lastTickMillis == 0L) { lastTickMillis = now; return; }
+		float dt = (now - lastTickMillis) / 1000.0f;
+		lastTickMillis = now;
+		if (dt > 0.5f) dt = 0.5f;	// clamp after a stall
+
+		// 1. Ramp speed toward the target.
+		float target = targetSpeedFor(reelState);
+		if (currentSpeed < target) {
+			currentSpeed = Math.min(target, currentSpeed + ACCEL * dt);
+		} else if (currentSpeed > target) {
+			currentSpeed = Math.max(target, currentSpeed - ACCEL * dt);
+		}
+
+		// 2. Advance angles using omega = V / r.
+		float rL = reelRadius(1.0f - tapeProgress);
+		float rR = reelRadius(tapeProgress);
+		float omegaL = BASE_ANGULAR * currentSpeed / rL;
+		float omegaR = BASE_ANGULAR * currentSpeed / rR;
+		leftAngle  += omegaL * dt;
+		rightAngle -= omegaR * dt;
+
+		// 3. Advance tape position for reading, writing, and rewinding.
+		if (reelState == ReelState.READING || reelState == ReelState.WRITING) {
+			tapeProgress += currentSpeed * dt * PROGRESS_RATE;
+		} else if (reelState == ReelState.REWINDING) {
+			tapeProgress -= currentSpeed * dt * PROGRESS_RATE * 3f;
+		}
+		tapeProgress = Math.max(0f, Math.min(1f, tapeProgress));
+
+		// 4. Auto-transitions.
+		if (reelState == ReelState.STOPPING && currentSpeed < 0.05f) {
+			currentSpeed = 0f;
+			setReelState(ReelState.IDLE);
+		}
+		if (reelState == ReelState.THREADING && now - stateChangedMillis > 1500) {
+			setReelState(ReelState.STOPPING);
+		}
+		if ((reelState == ReelState.READING || reelState == ReelState.WRITING) && now - lastOpMillis > 1500) {
+			setReelState(ReelState.STOPPING);
+		}
+		if (reelState == ReelState.SEARCHING && now - lastOpMillis > 400) {
+			setReelState(ReelState.STOPPING);
+		}
+		if (reelState == ReelState.REWINDING && tapeProgress <= 0.001f) {
+			setReelState(ReelState.STOPPING);
+		}
+
+		// 5. Periodic client sync. 4 Hz is enough - the client
+		//	  extrapolates between packets using currentSpeed.
+		if (level.getGameTime() % 5 == 0) {
+			setChanged();
+			level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 2);
+		}
+	}
+
+	// --- Hook the state machine into existing operations ----------------
+
+	private void recomputeProgress() {
+		int total = 0;
+		for (List<String> f : files) total += f.size();
+		if (total == 0) { tapeProgress = 0f; return; }
+		int consumed = 0;
+		for (int i = 0; i < currentFile && i < files.size(); i++) {
+			consumed += files.get(i).size();
+		}
+		consumed += currentRecord;
+		tapeProgress = Math.min(1f, consumed / (float) total);
 	}
 
 	// --- Peripheral compatibility ----------------------------------------
@@ -215,6 +388,12 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 			filesTag.add(f);
 		}
 		tag.put("Files", filesTag);
+
+		tag.putString("ReelState", reelState.name());
+		tag.putFloat("CurrentSpeed", currentSpeed);
+		tag.putFloat("LeftAngle", leftAngle);
+		tag.putFloat("RightAngle", rightAngle);
+		tag.putFloat("TapeProgress", tapeProgress);
 	}
 
 	@Override
@@ -232,6 +411,20 @@ public class TapeDriveBlockEntity extends BlockEntity implements ChannelDevice {
 			List<String> file = new ArrayList<>(f.size());
 			for (int j = 0; j < f.size(); j++) file.add(f.getString(j));
 			files.add(file);
+		}
+
+		try {
+			reelState = ReelState.valueOf(tag.getString("ReelState"));
+		} catch (IllegalArgumentException e) {
+			reelState = ReelState.IDLE;
+		}
+		currentSpeed  = tag.getFloat("CurrentSpeed");
+		leftAngle	  = tag.getFloat("LeftAngle");
+		rightAngle	  = tag.getFloat("RightAngle");
+		tapeProgress  = tag.getFloat("TapeProgress");
+
+		if (level != null && level.isClientSide()) {
+			lastClientSyncMillis = System.currentTimeMillis();
 		}
 	}
 }

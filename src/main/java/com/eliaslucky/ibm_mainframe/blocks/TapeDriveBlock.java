@@ -85,4 +85,12 @@ public class TapeDriveBlock extends Block implements EntityBlock {
 		}
 		return InteractionResult.sidedSuccess(level.isClientSide());
 	}
+
+	@Override
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+    	if (level.isClientSide()) return null;
+    	return (lvl, pos, st, be) -> {
+        	if (be instanceof TapeDriveBlockEntity t) t.tick();
+    	};
+	}
 }
