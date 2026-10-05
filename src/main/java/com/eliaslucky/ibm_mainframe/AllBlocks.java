@@ -10,7 +10,8 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
-import com.eliaslucky.ibm_mainframe.blocks.ConsoleBlock;
+import com.eliaslucky.ibm_mainframe.blocks.Console1052Block;
+import com.eliaslucky.ibm_mainframe.blocks.Console3270Block;
 import com.eliaslucky.ibm_mainframe.blocks.MainframeBlock;
 import com.eliaslucky.ibm_mainframe.blocks.CardReaderBlock;
 import com.eliaslucky.ibm_mainframe.blocks.LinePrinterBlock;
@@ -41,7 +42,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(3.5F)
 				.sound(SoundType.METAL)
-				.requiresCorrectToolForDrops()
+				.requiresCorrectToolForDrops(), BuiltInMainframes.S360_MODEL_30
 			), new Item.Properties()
 		);
 
@@ -83,7 +84,16 @@ public class AllBlocks {
 		);
 
 	public static final RegistryObject<Block> IBM_1052_CONSOLE = registerBlock("ibm_1052_console",
-			() -> new ConsoleBlock(BlockBehaviour.Properties.of()
+			() -> new Console1052Block(BlockBehaviour.Properties.of()
+				.mapColor(MapColor.COLOR_GRAY)
+				.strength(2.0F)
+				.sound(SoundType.METAL)
+				.requiresCorrectToolForDrops()
+			), new Item.Properties()
+		);
+
+	public static final RegistryObject<Block> IBM_3270_CONSOLE = registerBlock("ibm_1052_console",
+			() -> new Console3270Block(BlockBehaviour.Properties.of()
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F)
 				.sound(SoundType.METAL)

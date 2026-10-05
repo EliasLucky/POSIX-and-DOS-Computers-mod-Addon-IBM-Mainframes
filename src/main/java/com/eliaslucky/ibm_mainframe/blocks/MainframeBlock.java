@@ -31,8 +31,8 @@ import net.minecraft.world.phys.BlockHitResult;
  * not itself a cable, so it has to say so explicitly.)
  */
 public class MainframeBlock extends IBMComputerBlock {
-	public MainframeBlock(Properties properties) {
-		super(properties, MainframeType.S360_MODEL_30);
+	public MainframeBlock(Properties properties, MainframeType type) {
+		super(properties, type);
 	}
 
 	@Override

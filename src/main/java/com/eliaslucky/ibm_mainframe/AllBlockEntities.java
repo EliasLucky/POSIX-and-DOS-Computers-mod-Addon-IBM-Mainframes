@@ -33,8 +33,9 @@ public class AllBlockEntities {
 		() -> BlockEntityType.Builder.of(DiskDriveBlockEntity::new,
 			AllBlocks.IBM_2311_DISK_DRIVE.get()).build(null)
 	);
-	public static final RegistryObject<BlockEntityType<ConsoleBlockEntity>> IBM_1035_CONSOLE = BLOCK_ENTITIES.register("ibm_1035_console",
+	public static final RegistryObject<BlockEntityType<ConsoleBlockEntity>> IBM_CONSOLE = BLOCK_ENTITIES.register("ibm_console",
 		() -> BlockEntityType.Builder.of(ConsoleBlockEntity::new,
-			AllBlocks.IBM_1052_CONSOLE.get()).build(null)
+			AllBlocks.IBM_1052_CONSOLE.get(), AllBlocks.IBM_3270_CONSOLE.get()
+			).build(null)
 	);
 }

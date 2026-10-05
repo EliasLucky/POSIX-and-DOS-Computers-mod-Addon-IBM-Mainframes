@@ -1,7 +1,5 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
-import com.eliaslucky.ibm_mainframe.client.ConsoleScreen;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -17,18 +15,20 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * The IBM 1052 Console Printer-Keyboard.
+ * Shared behaviour for every console block in the mod.
  *
- * <p>Not a channel device. Wired to a dedicated console interface on
- * the CPU. Must be placed orthogonally adjacent to a mainframe
- * cabinet; the cabinet discovers it on boot and binds it as its
- * operator console.
+ * <p>Consoles are not channel devices. They attach to a dedicated
+ * console interface on a mainframe cabinet. One console per machine;
+ * a second console displaces the first.
  *
- * <p>Right-click opens the console screen. If no CPU is bound,
- * the screen shows a diagnostic and refuses input.
+ * <p>Subclasses supply exactly one thing: the screen to open on the
+ * client when the block is right-clicked. Everything else — binding,
+ * tick, placement, removal — lives here.
+ *
+ * <p>See {@link Console1052Block} and {@link Console3270Block}.
  */
-public class ConsoleBlock extends Block implements EntityBlock {
-	public ConsoleBlock(Properties p) { super(p); }
+public abstract class AbstractConsoleBlock extends Block implements EntityBlock {
+	protected AbstractConsoleBlock(Properties p) { super(p); }
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
@@ -47,17 +47,16 @@ public class ConsoleBlock extends Block implements EntityBlock {
 	public void onPlace(BlockState s, Level l, BlockPos p, BlockState o, boolean moved) {
 		super.onPlace(s, l, p, o, moved);
 		if (l.isClientSide()) return;
-
-		// Try to bind to an adjacent CPU right away.
-		BlockEntity be = l.getBlockEntity(p);
-		if (be instanceof ConsoleBlockEntity console) {
+		if (l.getBlockEntity(p) instanceof ConsoleBlockEntity console) {
 			console.tryBind();
 		}
 	}
 
 	@Override
 	public void onRemove(BlockState s, Level l, BlockPos p, BlockState n, boolean moved) {
-		if (!l.isClientSide() && !s.is(n.getBlock()) && l.getBlockEntity(p) instanceof ConsoleBlockEntity console) {
+		if (!l.isClientSide()
+				&& !s.is(n.getBlock())
+				&& l.getBlockEntity(p) instanceof ConsoleBlockEntity console) {
 			console.unbind();
 		}
 		super.onRemove(s, l, p, n, moved);
@@ -68,17 +67,25 @@ public class ConsoleBlock extends Block implements EntityBlock {
 		if (!(level.getBlockEntity(pos) instanceof ConsoleBlockEntity console)) {
 			return InteractionResult.PASS;
 		}
+
 		if (level.isClientSide()) {
-			net.minecraft.client.Minecraft.getInstance().setScreen(new ConsoleScreen(pos));
-		}
-		else {
-			// Re-check binding on every use a CPU may have been placed
-			// after the console, or a CPU replaced.
+			openScreenClient(pos);
+		} else {
 			console.tryBind();
 			if (!console.isBound()) {
-				player.displayClientMessage(Component.literal("Console is not connected to a processor."), true);
+				player.displayClientMessage(
+						Component.literal("Console is not connected to a processor."),
+						true);
 			}
 		}
 		return InteractionResult.sidedSuccess(level.isClientSide());
 	}
+
+	/**
+	 * Open the client-side screen for this console model. Called only
+	 * on the client, only from {@link #use}.
+	 *
+	 * @param pos the console's block position
+	 */
+	protected abstract void openScreenClient(BlockPos pos);
 }

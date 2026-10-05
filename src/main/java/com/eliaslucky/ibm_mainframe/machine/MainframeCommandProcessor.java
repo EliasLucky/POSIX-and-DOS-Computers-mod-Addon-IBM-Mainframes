@@ -9,11 +9,19 @@ import com.eliaslucky.mc_dos.blocks.computer.processors.ICommandProcessor;
 import java.util.Locale;
 
 /**
- * Operator console for a mainframe. The commands mirror what a real
- * operator typed at the 1052: short, terse, and about the machine
- * rather than the workload.
+ * Operator console for a mainframe.
+ *
+ * <p>One instance per {@link MainframeType}. Holds a back-reference
+ * to its type so that kernels it creates can inspect the machine's
+ * hardware identity.
  */
 public class MainframeCommandProcessor implements ICommandProcessor {
+	private final MainframeType type;
+
+	public MainframeCommandProcessor(MainframeType type) {
+		this.type = type;
+	}
+
 	@Override
 	public String process(ComputerBlockEntity computer, String rawInput) {
 		String input = rawInput == null ? "" : rawInput.trim();
@@ -97,11 +105,15 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 				 DEVICES   List channel-attached devices with unit addresses
 				 OUTPUT    View listings held because no printer is attached
 				 DSLIST    List catalogued datasets
-				           DSLIST MY.* to filter by prefix
+						   DSLIST MY.* to filter by prefix
 				 HELP	   Show this message
 			   """;
 	}
 
+	@Override
+	public Kernel createKernel() {
+		return new MainframeKernel(type);
+	}
 	@Override public String getPrompt(String path)	   { return ""; }
 	@Override public String defaultPath()			   { return "/"; }
 	@Override public FileNamePolicy fileNamePolicy()   { return PosixFileNamePolicy.INSTANCE; }

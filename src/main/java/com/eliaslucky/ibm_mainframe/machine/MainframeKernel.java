@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The mainframe kernel. Owns a device table, a role assignment, a boot
@@ -64,15 +65,18 @@ public class MainframeKernel implements Kernel {
 	private final Map<Role, Integer> roleToUnit = new EnumMap<>(Role.class);
 	private final List<String> bootLog = new ArrayList<>();
 	private final List<String> pendingOperator = new ArrayList<>();
-
+	private final MainframeType type;
+	
 	private DatasetCatalog catalog;
 	private boolean bootOk = false;
 	private boolean warnedNoPrinter = false;
 	private ConsoleBlockEntity console;
 
 	public MainframeKernel() {
-		ProgramRegistry.register("FORT", new FortProgram());
+		this.type = type;
 	}
+
+	public MainframeType machineType() { return type; }
 
 	// --- Kernel lifecycle -------------------------------------------------
 
@@ -176,6 +180,12 @@ public class MainframeKernel implements Kernel {
 			this.console.detachFromKernel();
 		}
 		this.console = c;
+		Set<String> accepted = type.acceptedConsoles();
+		if (!accepted.isEmpty() && !accepted.contains(c.consoleModel())) {
+			c.append("IEA910W " + c.consoleModel() + " NOT THE STANDARD CONSOLE FOR " + machineType.modelName());
+			c.append("IEA911W CONSOLE WILL OPERATE WITH REDUCED FIDELITY");
+		}
+		
 		c.append("IEE101I CONSOLE ATTACHED -- " + devices.names().size() + " DEVICES");
 
 		if (!pendingOperator.isEmpty()) {

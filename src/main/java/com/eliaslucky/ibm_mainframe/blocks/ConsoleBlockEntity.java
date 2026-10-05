@@ -44,6 +44,22 @@ public class ConsoleBlockEntity extends BlockEntity {
 		super(AllBlockEntities.IBM_1035_CONSOLE.get(), pos, state);
 	}
 
+	/**
+	 * The model identifier for this console: {@code "1052"} or
+	 * {@code "3270"}. Derived from the block class; not persisted
+	 * because a console cannot change model in place.
+	 *
+	 * @return a short uppercase model tag, or {@code "UNKNOWN"} if the
+	 *         block is neither of the two known console variants
+	 */
+	public String consoleModel() {
+		if (level == null) return "UNKNOWN";
+		Block b = getBlockState().getBlock();
+		if (b instanceof Console1052Block) return "1052";
+		if (b instanceof Console3270Block) return "3270";
+		return "UNKNOWN";
+	}
+
 	// --- Tick -------------------------------------------------------------
 
 	/**

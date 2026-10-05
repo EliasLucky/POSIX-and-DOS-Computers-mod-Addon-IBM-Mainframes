@@ -45,10 +45,16 @@ public class MainframeMod
 
 	private void commonSetup(final FMLCommonSetupEvent event) {
 		event.enqueueWork(ModMessages::register);
-		//event.enqueueWork(() -> {
-		//    ModExecutables.register();
-		//    ModDrivers.register();
-		//});
+		event.enqueueWork(() -> {
+		    // Machine types
+			
+			for (BuiltInMainframes type : BuiltInMainframes.values()) {
+				MachineTypeRegistry.register(type);
+			}
+
+			// Programs available to JCL
+			PorgramRegistry.register("FORT", new FortProgram());
+		});
 	}
 
 	public void buildContents(BuildCreativeModeTabContentsEvent event) {
