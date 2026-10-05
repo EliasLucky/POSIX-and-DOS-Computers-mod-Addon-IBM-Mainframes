@@ -1,0 +1,8 @@
+{
+	"variants": {
+		"facing=north": { "model": "ibm_mainframe:block/ibm_mainframe_s360" },
+		"facing=south": { "model": "ibm_mainframe:block/ibm_mainframe_s360", "y": 180 },
+		"facing=west": { "model": "ibm_mainframe:block/ibm_mainframe_s360", "y": 270 },
+		"facing=east": { "model": "ibm_mainframe:block/ibm_mainframe_s360", "y": 90 }
+	}
+}
