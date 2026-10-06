@@ -1,7 +1,7 @@
 package com.eliaslucky.ibm_mainframe.client;
 
 import com.eliaslucky.ibm_mainframe.MainframeMod;
-import com.eliaslucky.ibm_mainframe.blocks.ModBlockEntities;
+import com.eliaslucky.ibm_mainframe.AllBlockEntities;
 import com.eliaslucky.ibm_mainframe.client.model.LeftReelModel;
 import com.eliaslucky.ibm_mainframe.client.model.RightReelModel;
 
