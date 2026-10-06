@@ -110,13 +110,9 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 			   """;
 	}
 
-	@Override
-	public Kernel createKernel() {
-		return new MainframeKernel(type);
-	}
 	@Override public String getPrompt(String path)	   { return ""; }
 	@Override public String defaultPath()			   { return "/"; }
 	@Override public FileNamePolicy fileNamePolicy()   { return PosixFileNamePolicy.INSTANCE; }
 	@Override public String osFamily()				   { return "os360"; }
-	@Override public Kernel createKernel()			   { return new MainframeKernel(); }
+	@Override public Kernel createKernel()			   { return new MainframeKernel(type); }
 }

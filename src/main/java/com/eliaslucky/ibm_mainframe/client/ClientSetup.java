@@ -2,8 +2,8 @@ package com.eliaslucky.ibm_mainframe.client;
 
 import com.eliaslucky.ibm_mainframe.MainframeMod;
 import com.eliaslucky.ibm_mainframe.AllBlockEntities;
-import com.eliaslucky.ibm_mainframe.client.model.LeftReelModel;
-import com.eliaslucky.ibm_mainframe.client.model.RightReelModel;
+import com.eliaslucky.ibm_mainframe.client.model.LeftReelTapeDriveModel;
+import com.eliaslucky.ibm_mainframe.client.model.RightReelTapeDriveModel;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -45,9 +45,9 @@ public final class ClientSetup {
 	@SubscribeEvent
 	public static void onRegisterLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
 		event.registerLayerDefinition(ModModelLayers.TAPE_REEL_LEFT,
-				LeftReelModel::createBodyLayer);
+				LeftReelTapeDriveModel::createBodyLayer);
 		event.registerLayerDefinition(ModModelLayers.TAPE_REEL_RIGHT,
-				RightReelModel::createBodyLayer);
+				RightReelTapeDriveModel::createBodyLayer);
 	}
 
 	/**
@@ -57,7 +57,7 @@ public final class ClientSetup {
 	@SubscribeEvent
 	public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
 		event.registerBlockEntityRenderer(
-				ModBlockEntities.TAPE_DRIVE.get(),
+				AllBlockEntities.TAPE_DRIVE.get(),
 				TapeDriveRenderer::new);
 	}
 }

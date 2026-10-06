@@ -47,7 +47,6 @@ public class MainframeMod
 		event.enqueueWork(ModMessages::register);
 		event.enqueueWork(() -> {
 		    // Machine types
-			
 			for (BuiltInMainframes type : BuiltInMainframes.values()) {
 				MachineTypeRegistry.register(type);
 			}

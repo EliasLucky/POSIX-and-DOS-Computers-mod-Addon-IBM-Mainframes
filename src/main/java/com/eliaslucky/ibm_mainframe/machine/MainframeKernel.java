@@ -14,7 +14,6 @@ import com.eliaslucky.ibm_mainframe.jcl.Job;
 import com.eliaslucky.ibm_mainframe.jcl.JobContext;
 import com.eliaslucky.ibm_mainframe.jcl.ProgramRegistry;
 import com.eliaslucky.ibm_mainframe.jcl.TapeLabels;
-import com.eliaslucky.ibm_mainframe.programs.FortProgram;
 import com.eliaslucky.ibm_mainframe.dataset.Dataset;
 import com.eliaslucky.ibm_mainframe.dataset.DatasetCatalog;
 import com.eliaslucky.mc_dos.api.hardware.DeviceLookup;
@@ -72,7 +71,7 @@ public class MainframeKernel implements Kernel {
 	private boolean warnedNoPrinter = false;
 	private ConsoleBlockEntity console;
 
-	public MainframeKernel() {
+	public MainframeKernel(MainframeType type) {
 		this.type = type;
 	}
 
@@ -182,7 +181,7 @@ public class MainframeKernel implements Kernel {
 		this.console = c;
 		Set<String> accepted = type.acceptedConsoles();
 		if (!accepted.isEmpty() && !accepted.contains(c.consoleModel())) {
-			c.append("IEA910W " + c.consoleModel() + " NOT THE STANDARD CONSOLE FOR " + machineType.modelName());
+			c.append("IEA910W " + c.consoleModel() + " NOT THE STANDARD CONSOLE FOR " + type.modelName());
 			c.append("IEA911W CONSOLE WILL OPERATE WITH REDUCED FIDELITY");
 		}
 		

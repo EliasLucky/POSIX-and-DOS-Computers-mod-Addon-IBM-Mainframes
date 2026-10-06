@@ -1,5 +1,7 @@
 package com.eliaslucky.ibm_mainframe.client;
 
+import com.eliaslucky.ibm_mainframe.MainframeMod;
+
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.resources.ResourceLocation;
 
