@@ -1,5 +1,7 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
+import com.eliaslucky.ibm_mainframe.client.ConsoleScreen;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 

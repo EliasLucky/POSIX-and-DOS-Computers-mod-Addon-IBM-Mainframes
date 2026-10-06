@@ -1,7 +1,11 @@
 package com.eliaslucky.ibm_mainframe;
 
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
+import com.eliaslucky.mc_dos.blocks.computer.MachineTypeRegistry;
+import com.eliaslucky.ibm_mainframe.jcl.ProgramRegistry;
+import com.eliaslucky.ibm_mainframe.machine.BuiltInMainframes;
 import com.eliaslucky.ibm_mainframe.network.ModMessages;
+import com.eliaslucky.ibm_mainframe.programs.FortProgram;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.world.item.Item;
@@ -18,8 +22,8 @@ import org.slf4j.Logger;
 @Mod(MainframeMod.MODID)
 public class MainframeMod
 {
-	public static final String MODID = "ibm_mainframes";
-	public static final String NAME = "IBM Mainframes addon for \"POSIX and DOS Computers mod\"";
+	public static final String MODID = "ibm_mainframe";
+	public static final String NAME = "IBM Mainframes addon for \"POSIX and DOS Computers\"";
 
 	public static final Logger LOGGER = LogUtils.getLogger();
 
@@ -52,7 +56,7 @@ public class MainframeMod
 			}
 
 			// Programs available to JCL
-			PorgramRegistry.register("FORT", new FortProgram());
+			ProgramRegistry.register("FORT", new FortProgram());
 		});
 	}
 

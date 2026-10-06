@@ -12,6 +12,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -41,7 +42,7 @@ public class ConsoleBlockEntity extends BlockEntity {
 	private int rebindCountdown = 0;
 
 	public ConsoleBlockEntity(BlockPos pos, BlockState state) {
-		super(AllBlockEntities.IBM_1035_CONSOLE.get(), pos, state);
+		super(AllBlockEntities.IBM_CONSOLE.get(), pos, state);
 	}
 
 	/**
