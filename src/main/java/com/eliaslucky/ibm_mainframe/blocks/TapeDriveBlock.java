@@ -2,6 +2,8 @@ package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.items.MagneticTapeItem;
+import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -21,7 +23,7 @@ import net.minecraft.world.phys.BlockHitResult;
  * The IBM 2401 Magnetic Tape Unit. Single-reel drive. Right-click
  * with a reel to load; sneak-right-click empty-handed to unload.
  */
-public class TapeDriveBlock extends Block implements EntityBlock {
+public class TapeDriveBlock extends DirectionalHorizontalBlock implements EntityBlock {
 	public TapeDriveBlock(Properties p) { super(p); }
 
 	@Override
