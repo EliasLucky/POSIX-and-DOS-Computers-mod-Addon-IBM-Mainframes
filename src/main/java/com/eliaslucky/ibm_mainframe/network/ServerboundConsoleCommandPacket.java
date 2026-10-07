@@ -40,25 +40,43 @@ public class ServerboundConsoleCommandPacket {
 			ServerPlayer player = ctx.getSender();
 			if (player == null) return;
 
-			ServerLevel level = player.serverLevel();
-			BlockEntity be = level.getBlockEntity(this.pos);
-
-			if (!(be instanceof ConsoleBlockEntity console)) return;
+			if (!(player.serverLevel().getBlockEntity(pos) instanceof ConsoleBlockEntity console)) {
+				return;
+			}
 
 			if (!console.isBound()) {
-				console.append("IEE100I NO PROCESSOR ATTACHED");
+				console.append("IEE100I NO PROCESSOR ATTACHED -- RIGHT-CLICK THE MAINFRAME TO IPL");
+				ModMessages.sendToPlayer(
+						ClientboundConsoleOutputPacket.replace(pos, console.getBuffer()),
+						player);
 				return;
 			}
-			BlockEntity cpuBe = level.getBlockEntity(console.getBoundCpu());
+
+			var cpuBe = player.serverLevel().getBlockEntity(console.getBoundCpu());
 			if (!(cpuBe instanceof ComputerBlockEntity cpu)) {
-				console.append("IEE100I NO PROCESSOR ATTACHED");
+				console.append("IEE100I PROCESSOR GONE");
+				ModMessages.sendToPlayer(
+						ClientboundConsoleOutputPacket.replace(pos, console.getBuffer()),
+						player);
 				return;
 			}
+
 			console.append("IPL> " + command);
+
+			// Process. If the kernel isn't ready yet, boot the CPU first.
+			if (cpu.getKernel() == null) {
+				cpu.powerOn();
+				console.append("IEA000I IPL STARTED");
+			}
+
 			String response = cpu.processCommand(command);
 			if (response != null && !response.isEmpty()) {
-				console.appendLines(List.of(response.split("\n",-1)));
+				for (String line : response.split("\n", -1)) console.append(line);
 			}
+
+			ModMessages.sendToPlayer(
+					ClientboundConsoleOutputPacket.replace(pos, console.getBuffer()),
+					player);
 		});
 		ctx.setPacketHandled(true);
 	}
