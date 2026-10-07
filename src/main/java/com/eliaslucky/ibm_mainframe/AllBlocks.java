@@ -93,7 +93,7 @@ public class AllBlocks {
 			), new Item.Properties()
 		);
 
-	public static final RegistryObject<Block> IBM_3270_CONSOLE = registerBlock("ibm_1052_console",
+	public static final RegistryObject<Block> IBM_3270_CONSOLE = registerBlock("ibm_3270_console",
 			() -> new Console3270Block(BlockBehaviour.Properties.of()
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F)
