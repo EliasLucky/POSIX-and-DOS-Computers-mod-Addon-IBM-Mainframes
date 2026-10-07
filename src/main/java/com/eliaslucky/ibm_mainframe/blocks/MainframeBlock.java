@@ -59,7 +59,21 @@ public class MainframeBlock extends IBMComputerBlock {
 
 		BlockEntity be = level.getBlockEntity(pos);
 		if (!(be instanceof ComputerBlockEntity cpu)) return InteractionResult.PASS;
+		// --- IPL on demand ---
+		// The player is expected to wire up cables and devices BEFORE
+		// booting. Booting first would scan an empty bus and register no
+		// devices; the kernel would then need a re-scan.
+		if (cpu.getKernel() == null && player.getItemInHand(hand).isEmpty()) {
+			cpu.powerOn();
 
+			// walk the six neighbours and ask any
+			// adjacent console to bind.
+			for (Direction d : Direction.values()) {
+				if (level.getBlockEntity(pos.relative(d)) instanceof ConsoleBlockEntity c) {
+					c.tryBind();
+				}
+			}
+		}
 		Kernel k = cpu.getKernel();
 		if (!(k instanceof MainframeKernel mk)) {
 			player.displayClientMessage(Component.literal(
@@ -72,22 +86,23 @@ public class MainframeBlock extends IBMComputerBlock {
 		player.displayClientMessage(Component.literal(mk.statusLine()), false);
 
 		// Buffered operator log (up to the last 50 lines to avoid spam).
-		List<String> pending = mk.peekOperatorBuffer();
-		if (!pending.isEmpty()) {
-			int start = Math.max(0, pending.size() - 50);
-			player.displayClientMessage(Component.literal(
-					"--- operator log (" + (pending.size() - start) + " of "
-							+ pending.size() + " lines) ---"), false);
-			for (int i = start; i < pending.size(); i++) {
-				player.displayClientMessage(Component.literal(pending.get(i)), false);
-			}
-		}
-
 		// Hint about what's missing.
 		if (!mk.hasConsole()) {
 			player.displayClientMessage(Component.literal(
 					"No console attached. Place a console block adjacent to this CPU."),
 					false);
+			List<String> pending = mk.peekOperatorBuffer();
+			if (!pending.isEmpty()) {
+				int tail = 15;
+				int start = Math.max(0, pending.size() - tail);
+				player.displayClientMessage(Component.literal(
+						"--- last " + (pending.size() - start) + " of "
+								+ pending.size() + " operator lines ---"),
+						false);
+				for (int i = start; i < pending.size(); i++) {
+					player.displayClientMessage(Component.literal(pending.get(i)), false);
+				}
+			}
 		} else {
 			player.displayClientMessage(Component.literal(
 					"Console attached. Right-click the console to operate."),
