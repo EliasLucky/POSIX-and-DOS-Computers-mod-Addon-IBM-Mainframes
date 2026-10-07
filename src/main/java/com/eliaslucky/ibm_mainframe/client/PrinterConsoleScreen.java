@@ -24,7 +24,7 @@ import java.util.List;
  * <p>Sprocket holes run down the left and right margins, one per
  * text row, making it look like the physical fan-fold paper the 1052 used.
  */
-public class PrinterConsoleScreen extends Screen {
+public class PrinterConsoleScreen extends Screen implements ConsoleScreenBase {
 	// Cell geometry
 	private static final int CELL_W = 8;
 	private static final int CELL_H = 16;
@@ -67,7 +67,7 @@ public class PrinterConsoleScreen extends Screen {
 	}
 
 	// --- Buffer --------------------------------------------------------
-
+	@Override
 	public void setBuffer(List<String> incoming) {
 		lines.clear();
 		if (incoming != null) {
@@ -79,7 +79,7 @@ public class PrinterConsoleScreen extends Screen {
 		trimLocal();
 		scrollOffset = 0;
 	}
-
+	@Override
 	public void appendLine(String line) {
 		if (line == null) return;
 		for (String l : line.split("\n", -1)) lines.add(l);

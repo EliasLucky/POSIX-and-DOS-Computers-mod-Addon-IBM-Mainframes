@@ -1,6 +1,6 @@
 package com.eliaslucky.ibm_mainframe.network;
 
-import com.eliaslucky.ibm_mainframe.client.ConsoleScreen;
+import com.eliaslucky.ibm_mainframe.client.ConsoleScreenBase;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -80,7 +80,7 @@ public class ClientboundConsoleOutputPacket {
 	public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
 		NetworkEvent.Context ctx = contextSupplier.get();
 		ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-			if (Minecraft.getInstance().screen instanceof ConsoleScreen cs) {
+			if (Minecraft.getInstance().screen instanceof ConsoleScreenBase cs) {
 				if (mode == Mode.REPLACE) {
 					cs.setBuffer(lines);
 				} else {

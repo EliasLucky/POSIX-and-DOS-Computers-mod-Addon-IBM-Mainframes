@@ -32,7 +32,7 @@ import java.util.List;
  * Home/End. The input line stays pinned at the bottom regardless of
  * scroll position.
  */
-public class ConsoleScreen extends Screen {
+public class ConsoleScreen extends Screen implements ConsoleScreenBase {
 	private static final int CELL_W = 8;
 	private static final int CELL_H = 16;
 	private static final int MARGIN = 16;
@@ -65,8 +65,7 @@ public class ConsoleScreen extends Screen {
 	}
 
 	// --- Buffer management ---------------------------------------------
-
-	/** Replace the whole buffer. Called on the initial state sync. */
+	@Override
 	public void setBuffer(List<String> incoming) {
 		lines.clear();
 		if (incoming != null) {
@@ -80,7 +79,7 @@ public class ConsoleScreen extends Screen {
 		scrollOffset = 0;
 	}
 
-	/** Append one or more lines. Called on live pushes. */
+	@Override
 	public void appendLine(String line) {
 		if (line == null) return;
 		for (String l : line.split("\n", -1)) lines.add(l);
