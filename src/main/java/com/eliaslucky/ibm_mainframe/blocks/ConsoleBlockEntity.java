@@ -51,7 +51,7 @@ public class ConsoleBlockEntity extends BlockEntity {
 	 * because a console cannot change model in place.
 	 *
 	 * @return a short uppercase model tag, or {@code "UNKNOWN"} if the
-	 *         block is neither of the two known console variants
+	 *		   block is neither of the two known console variants
 	 */
 	public String consoleModel() {
 		if (level == null) return "UNKNOWN";
@@ -95,10 +95,15 @@ public class ConsoleBlockEntity extends BlockEntity {
 		for (Direction d : Direction.values()) {
 			BlockPos np = worldPosition.relative(d);
 			BlockEntity be = level.getBlockEntity(np);
-			if (be instanceof ComputerBlockEntity cpu && cpu.getKernel() instanceof MainframeKernel) {
+			if (be instanceof ComputerBlockEntity cpu && cpu.getKernel() instanceof MainframeKernel kernel) {
+				ConsoleBlockEntity current = kernel.getConsole();
+				if (current != null && current != this) {
+					continue;
+				}
 				boundCpu = np;
 				// Tell the kernel to route its output here.
-				((MainframeKernel) cpu.getKernel()).attachConsole(this);
+				kernel.attachConsole(this);
+				setChanged();
 				return;
 			}
 		}

@@ -174,6 +174,7 @@ public class MainframeKernel implements Kernel {
 	 */
 	public void attachConsole(ConsoleBlockEntity c) {
 		if (c == null) return;
+		if (this.console == c) return;
 		// If a different console is already attached, detach it first.
 		if (this.console != null && this.console != c) {
 			this.console.detachFromKernel();
@@ -199,6 +200,9 @@ public class MainframeKernel implements Kernel {
 	}
 
 	public boolean hasConsole() { return console != null; }
+	/** The currently attached console, or null. Used by consoles to
+	 *	check whether the CPU is already claimed. */
+	public ConsoleBlockEntity getConsole() { return console; }
 
 	// --- Operator output --------------------------------------------------
 
