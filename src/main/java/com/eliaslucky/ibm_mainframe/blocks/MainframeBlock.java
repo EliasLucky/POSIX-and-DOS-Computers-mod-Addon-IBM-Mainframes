@@ -5,6 +5,7 @@ import java.util.List;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
 import com.eliaslucky.ibm_mainframe.machine.MainframeType;
+import com.eliaslucky.mc_dos.AllCreativeModeTabs;
 import com.eliaslucky.mc_dos.api.hardware.Kernel;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import com.eliaslucky.mc_dos.blocks.computer.IBMComputerBlock;
@@ -12,9 +13,11 @@ import com.eliaslucky.mc_dos.blocks.computer.IBMComputerBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,6 +36,11 @@ import net.minecraft.world.phys.BlockHitResult;
 public class MainframeBlock extends IBMComputerBlock {
 	public MainframeBlock(Properties properties, MainframeType type) {
 		super(properties, type);
+	}
+	
+	@Override
+	public ResourceKey<CreativeModeTab> getCreativeTab() {
+		return AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey();
 	}
 
 	@Override

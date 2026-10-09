@@ -1,10 +1,15 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
+import com.eliaslucky.mc_dos.AllCreativeModeTabs;
+import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -27,8 +32,13 @@ import net.minecraft.world.phys.BlockHitResult;
  *
  * <p>See {@link Console1052Block} and {@link Console3270Block}.
  */
-public abstract class AbstractConsoleBlock extends Block implements EntityBlock {
+public abstract class AbstractConsoleBlock extends Block implements EntityBlock, ICustomCreativeTab {
 	protected AbstractConsoleBlock(Properties p) { super(p); }
+	
+	@Override
+	public ResourceKey<CreativeModeTab> getCreativeTab() {
+		return AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey();
+	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

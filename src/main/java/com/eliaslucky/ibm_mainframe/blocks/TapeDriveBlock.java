@@ -2,13 +2,17 @@ package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.items.MagneticTapeItem;
+import com.eliaslucky.mc_dos.AllCreativeModeTabs;
 import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
+import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -23,8 +27,13 @@ import net.minecraft.world.phys.BlockHitResult;
  * The IBM 2401 Magnetic Tape Unit. Single-reel drive. Right-click
  * with a reel to load; sneak-right-click empty-handed to unload.
  */
-public class TapeDriveBlock extends DirectionalHorizontalBlock implements EntityBlock {
+public class TapeDriveBlock extends DirectionalHorizontalBlock implements EntityBlock, ICustomCreativeTab {
 	public TapeDriveBlock(Properties p) { super(p); }
+	
+	@Override
+	public ResourceKey<CreativeModeTab> getCreativeTab() {
+		return AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey();
+	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

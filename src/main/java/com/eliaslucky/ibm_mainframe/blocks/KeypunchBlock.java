@@ -1,18 +1,27 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.client.KeypunchScreen;
+import com.eliaslucky.mc_dos.AllCreativeModeTabs;
+import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
-public class KeypunchBlock extends Block {
+public class KeypunchBlock extends Block implements ICustomCreativeTab {
 	public KeypunchBlock(Properties p) { super(p); }
+	
+	@Override
+	public ResourceKey<CreativeModeTab> getCreativeTab() {
+		return AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey();
+	}
 
 	@Override
 	public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
