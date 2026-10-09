@@ -44,9 +44,9 @@ public final class ClientSetup {
 	 */
 	@SubscribeEvent
 	public static void onRegisterLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
-		event.registerLayerDefinition(ModModelLayers.TAPE_REEL_LEFT,
+		event.registerLayerDefinition(ModModelLayers.IBM_2401_TAPE_REEL_LEFT,
 				LeftReelTapeDriveModel::createBodyLayer);
-		event.registerLayerDefinition(ModModelLayers.TAPE_REEL_RIGHT,
+		event.registerLayerDefinition(ModModelLayers.IBM_2401_TAPE_REEL_RIGHT,
 				RightReelTapeDriveModel::createBodyLayer);
 	}
 

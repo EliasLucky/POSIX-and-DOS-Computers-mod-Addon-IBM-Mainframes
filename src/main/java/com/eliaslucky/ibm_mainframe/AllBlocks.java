@@ -69,7 +69,7 @@ public class AllBlocks {
 			), new Item.Properties()
 		);
 
-	public static final RegistryObject<Block> IBM_TAPE_DRIVE = registerBlock("ibm_tape_drive",
+	public static final RegistryObject<Block> IBM_TAPE_DRIVE = registerBlock("ibm_2401_tape_drive",
 			() -> new TapeDriveBlock(BlockBehaviour.Properties.of()
 				.mapColor(MapColor.STONE)
 				.strength(2.0F,2.0F)

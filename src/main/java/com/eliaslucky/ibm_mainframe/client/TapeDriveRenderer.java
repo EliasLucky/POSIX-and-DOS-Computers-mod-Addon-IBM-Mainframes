@@ -39,8 +39,8 @@ public class TapeDriveRenderer implements BlockEntityRenderer<TapeDriveBlockEnti
 	private final ModelPart rightReel;
 
 	public TapeDriveRenderer(BlockEntityRendererProvider.Context ctx) {
-		this.leftReel  = ctx.bakeLayer(ModModelLayers.TAPE_REEL_LEFT);
-		this.rightReel = ctx.bakeLayer(ModModelLayers.TAPE_REEL_RIGHT);
+		this.leftReel  = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_LEFT);
+		this.rightReel = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_RIGHT);
 	}
 
 	@Override

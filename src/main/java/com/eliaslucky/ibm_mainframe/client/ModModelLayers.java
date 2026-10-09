@@ -9,11 +9,11 @@ import net.minecraft.resources.ResourceLocation;
 public final class ModModelLayers {
 	private ModModelLayers() {}
 
-	public static final ModelLayerLocation TAPE_REEL_LEFT = new ModelLayerLocation(
-			ResourceLocation.fromNamespaceAndPath(MainframeMod.MODID, "tape_reel"),
+	public static final ModelLayerLocation IBM_2401_TAPE_REEL_LEFT = new ModelLayerLocation(
+			ResourceLocation.fromNamespaceAndPath(MainframeMod.MODID, "ibm_2401_tape_reel"),
 			"left");
 
-	public static final ModelLayerLocation TAPE_REEL_RIGHT = new ModelLayerLocation(
-			ResourceLocation.fromNamespaceAndPath(MainframeMod.MODID, "tape_reel"),
+	public static final ModelLayerLocation IBM_2401_TAPE_REEL_RIGHT = new ModelLayerLocation(
+			ResourceLocation.fromNamespaceAndPath(MainframeMod.MODID, "ibm_2401_tape_reel"),
 			"right");
 }
