@@ -3,6 +3,7 @@ package com.eliaslucky.ibm_mainframe.blocks;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.items.DiskPackItem;
 import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
+import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;
@@ -21,7 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** The IBM 2311 Disk Storage Drive. Accepts 1316 disk packs. */
-public class DiskDriveBlock extends Block implements EntityBlock, ICustomCreativeTab {
+public class DiskDriveBlock extends DirectionalHorizontalBlock implements EntityBlock, ICustomCreativeTab {
 	public DiskDriveBlock(Properties p) { super(p); }
 	
 	@Override

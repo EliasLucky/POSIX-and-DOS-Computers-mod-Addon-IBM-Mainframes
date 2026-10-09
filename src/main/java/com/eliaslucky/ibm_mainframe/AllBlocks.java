@@ -43,6 +43,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(3.5F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops(), BuiltInMainframes.S360_MODEL_30
 			), new Item.Properties()
 		);
@@ -53,6 +54,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops()
 			), new Item.Properties()
 		);
@@ -62,6 +64,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops()
 			), new Item.Properties()
 		);
@@ -80,6 +83,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F,2.0F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops()
 			), new Item.Properties()
 		);
@@ -89,6 +93,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops()
 			), new Item.Properties()
 		);
@@ -98,6 +103,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 				.requiresCorrectToolForDrops()
 			), new Item.Properties()
 		);
@@ -108,6 +114,7 @@ public class AllBlocks {
 				.mapColor(MapColor.COLOR_GRAY)
 				.strength(2.0F,2.0f)
 				.sound(SoundType.METAL)
+				.noOcclusion()
 			), new Item.Properties()
 		);
 

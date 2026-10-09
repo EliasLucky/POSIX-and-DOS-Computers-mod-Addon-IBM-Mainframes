@@ -3,6 +3,7 @@ package com.eliaslucky.ibm_mainframe.blocks;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.items.CardDeckItem;
 import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
+import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;
@@ -20,7 +21,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
-public class CardReaderBlock extends Block implements EntityBlock, ICustomCreativeTab {
+public class CardReaderBlock extends DirectionalHorizontalBlock implements EntityBlock, ICustomCreativeTab {
 	public CardReaderBlock(Properties p) { super(p); }
 	
 	@Override

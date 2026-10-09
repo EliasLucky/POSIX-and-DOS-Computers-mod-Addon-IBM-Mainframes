@@ -1,6 +1,7 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
+import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;
@@ -32,7 +33,7 @@ import net.minecraft.world.phys.BlockHitResult;
  *
  * <p>See {@link Console1052Block} and {@link Console3270Block}.
  */
-public abstract class AbstractConsoleBlock extends Block implements EntityBlock, ICustomCreativeTab {
+public abstract class AbstractConsoleBlock extends DirectionalHorizontalBlock implements EntityBlock, ICustomCreativeTab {
 	protected AbstractConsoleBlock(Properties p) { super(p); }
 	
 	@Override
