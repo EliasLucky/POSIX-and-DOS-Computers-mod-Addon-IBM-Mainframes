@@ -39,8 +39,8 @@ public class TapeDriveRenderer implements BlockEntityRenderer<TapeDriveBlockEnti
 	private final ModelPart rightReel;
 
 	public TapeDriveRenderer(BlockEntityRendererProvider.Context ctx) {
-		this.leftReel  = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_LEFT);
-		this.rightReel = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_RIGHT);
+		this.leftReel  = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_RIGHT);
+		this.rightReel = ctx.bakeLayer(ModModelLayers.IBM_2401_TAPE_REEL_LEFT);
 	}
 
 	@Override
@@ -71,22 +71,25 @@ public class TapeDriveRenderer implements BlockEntityRenderer<TapeDriveBlockEnti
 
 		// --- Pose: move to block center, face the right way ---
 		pose.pushPose();
-		pose.translate(0.5, 0.5, 0.5);
-		pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
-		pose.translate(0, -0.5, 0);		  // model sits on the block floor
+		pose.translate(0.5, 1.65, 0.5);
+		pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()+180f));
 
 		VertexConsumer vc = buf.getBuffer(RenderType.entityCutout(REEL_TEX));
 
 		// Left reel: only visible with a tape inserted.
 		if (be.hasTape()) {
-			leftReel.zRot = (float) Math.toRadians(leftAngle);
-			leftReel.render(pose, vc, light, overlay);
+			drawReel(pose, vc, leftReel, light, overlay, (float) Math.toRadians(leftAngle));
 		}
 
 		// Right reel: always present.
-		rightReel.zRot = (float) Math.toRadians(rightAngle);
-		rightReel.render(pose, vc, light, overlay);
+		drawReel(pose, vc, rightReel, light, overlay, (float) Math.toRadians(rightAngle));
 
+		pose.popPose();
+	}
+	private void drawReel(PoseStack pose, VertexConsumer vc, ModelPart part, int light, int overlay, float zRadians) {
+		pose.pushPose();
+		pose.mulPose(Axis.ZP.rotation(zRadians));
+		part.render(pose, vc, light, overlay);
 		pose.popPose();
 	}
 

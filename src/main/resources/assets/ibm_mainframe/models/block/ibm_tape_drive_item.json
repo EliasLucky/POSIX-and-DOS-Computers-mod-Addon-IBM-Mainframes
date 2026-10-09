@@ -1,10 +1,11 @@
 {
 	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
 	"parent": "block/block",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "ibm_mainframe:block/ibm_2401_tape_drive",
-		"particle": "ibm_mainframe:block/ibm_2401_tape_drive"
+		"0": "ibm_mainframe:block/ibm_tape_drive",
+		"particle": "ibm_mainframe:block/ibm_tape_drive"
 	},
 	"elements": [
 		{
@@ -86,16 +87,16 @@
 			}
 		},
 		{
-			"from": [1, 14.99, 1],
-			"to": [15, 19.99, 2],
+			"from": [0.5, 14.99, 1],
+			"to": [15.5, 19.99, 2],
 			"rotation": {"angle": 0, "axis": "y", "origin": [-7, 2, 8]},
 			"faces": {
-				"north": {"uv": [0, 0, 7, 2.5], "texture": "#0"},
+				"north": {"uv": [0, 0, 7.5, 2.5], "texture": "#0"},
 				"east": {"uv": [0, 0, 0.5, 3], "texture": "#0"},
-				"south": {"uv": [0, 0, 7, 3], "texture": "#0"},
+				"south": {"uv": [0, 0, 7.5, 2.5], "texture": "#0"},
 				"west": {"uv": [6.5, 0, 7, 3], "texture": "#0"},
-				"up": {"uv": [0, 0, 7, 0.5], "rotation": 180, "texture": "#0"},
-				"down": {"uv": [0, 0, 7, 0.5], "texture": "#0"}
+				"up": {"uv": [0, 0, 7.5, 0.5], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0, 7.5, 0.5], "texture": "#0"}
 			}
 		},
 		{
