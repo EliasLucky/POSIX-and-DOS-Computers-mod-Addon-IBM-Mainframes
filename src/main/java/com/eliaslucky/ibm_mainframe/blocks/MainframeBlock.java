@@ -5,7 +5,7 @@ import java.util.List;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
 import com.eliaslucky.ibm_mainframe.machine.MainframeType;
-import com.eliaslucky.mc_dos.AllCreativeModeTabs;
+import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
 import com.eliaslucky.mc_dos.api.hardware.Kernel;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import com.eliaslucky.mc_dos.blocks.computer.IBMComputerBlock;

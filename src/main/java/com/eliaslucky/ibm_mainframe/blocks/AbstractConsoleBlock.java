@@ -1,6 +1,6 @@
 package com.eliaslucky.ibm_mainframe.blocks;
 
-import com.eliaslucky.mc_dos.AllCreativeModeTabs;
+import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
 import net.minecraft.core.BlockPos;

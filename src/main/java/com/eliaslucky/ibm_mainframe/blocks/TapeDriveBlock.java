@@ -2,7 +2,7 @@ package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.ibm_mainframe.items.MagneticTapeItem;
-import com.eliaslucky.mc_dos.AllCreativeModeTabs;
+import com.eliaslucky.ibm_mainframe.AllCreativeModeTabs;
 import com.eliaslucky.mc_dos.blocks.DirectionalHorizontalBlock;
 import com.eliaslucky.mc_dos.blocks.ICustomCreativeTab;
 
