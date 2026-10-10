@@ -1,12 +1,11 @@
 {
 	"format_version": "1.9.0",
-	"credit": "Made with Blockbench",
 	"parent": "block/block",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "ibm_mainframe:block/ibm_s360",
-		"1": "ibm_mainframe:block/ibm_s360_panel",
-		"particle": "ibm_mainframe:block/ibm_s360"
+		"0": "ibm_mainframe:block/ibm_mainframe_s360",
+		"1": "ibm_mainframe:block/ibm_mainframe_s360_panel",
+		"particle": "ibm_mainframe:block/ibm_mainframe_s360"
 	},
 	"elements": [
 		{

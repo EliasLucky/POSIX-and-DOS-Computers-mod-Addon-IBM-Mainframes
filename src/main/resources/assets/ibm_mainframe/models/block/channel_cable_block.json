@@ -1,0 +1,6 @@
+{
+	"parent": "block/cube_all",
+	"textures": {
+		"all": "ibm_mainframe:block/cable_block"
+	}
+}
