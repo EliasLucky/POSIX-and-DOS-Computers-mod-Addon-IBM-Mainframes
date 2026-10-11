@@ -38,9 +38,11 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		String arg = parts.length > 1 ? parts[1] : "";
 
 		return switch (cmd) {
-			case "START"   -> kernel.runNextJob();
+		case "SUBMIT" -> kernel.submitJob();
+		case "START"  -> kernel.runNextJob();
+		case "JOBS"   -> kernel.listJobs();
+		case "OUTPUT" -> kernel.viewOutput(arg);
 			case "DEVICES" -> listDevices(kernel);
-			case "OUTPUT"  -> dumpOrphanOutput(kernel);
 			case "DSLIST"  -> dslist(kernel,arg);
 			case "HELP"    -> helpText();
 			default		   -> "IEE300I COMMAND NOT RECOGNIZED: " + cmd;
@@ -101,11 +103,11 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 	private static String helpText() {
 		return """
 			   IEE500I MAINFRAME OPERATOR COMMANDS
-				 START     Read and run the next job from the card reader
+				 START	   Read and run the next job from the card reader
 				 DEVICES   List channel-attached devices with unit addresses
 				 OUTPUT    View listings held because no printer is attached
 				 DSLIST    List catalogued datasets
-				           DSLIST MY.* to filter by prefix
+						   DSLIST MY.* to filter by prefix
 				 HELP	   Show this message
 			   """;
 	}
