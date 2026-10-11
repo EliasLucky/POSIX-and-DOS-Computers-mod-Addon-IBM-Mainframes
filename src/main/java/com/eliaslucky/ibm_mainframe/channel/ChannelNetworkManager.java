@@ -2,6 +2,7 @@ package com.eliaslucky.ibm_mainframe.channel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.Direction;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,5 +53,32 @@ public final class ChannelNetworkManager {
 	 */
 	public static void invalidateLevel(Level level) {
 		CACHE.remove(level);
+	}
+	/**
+	 * Find a mainframe CPU on the same cable network as {@code pos}.
+	 *
+	 * <p>The block at {@code pos} need not itself be a cable. Any of
+	 * its six neighbours that is a cable is used as the entry point
+	 * into the network, and the CPU is read from the resulting
+	 * {@link ChannelNetwork}. Returns {@code null} if no cable touches
+	 * {@code pos}, or if the network has no CPU.
+	 *
+	 * <p>If a network somehow contains multiple CPUs (which the kernel
+	 * refuses to boot through anyway), the returned position is one
+	 * of them, chosen nondeterministically. Callers that care about
+	 * uniqueness should verify separately.
+	 */
+	public static BlockPos findCpuOnNetwork(Level level, BlockPos pos) {
+		if (level == null || level.isClientSide()) return null;
+
+		for (Direction d : Direction.values()) {
+			BlockPos np = pos.relative(d);
+			if (ChannelCableBlock.isCable(level.getBlockState(np))) {
+				ChannelNetwork net = getOrBuild(level, np);
+				if (net.cpus().isEmpty()) return null;
+				return net.cpus().iterator().next();
+			}
+		}
+		return null;
 	}
 }

@@ -2,6 +2,7 @@ package com.eliaslucky.ibm_mainframe.blocks;
 
 import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
 import com.eliaslucky.ibm_mainframe.AllBlockEntities;
+import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
 import com.eliaslucky.mc_dos.api.hardware.Kernel;
 
@@ -83,25 +84,36 @@ public class ConsoleBlockEntity extends BlockEntity {
 	public void tryBind() {
 		if (level == null || level.isClientSide()) return;
 
-		// Already bound to a live CPU?
+		// Already bound to a live CPU? Confirm it's still on our network.
 		if (boundCpu != null) {
 			BlockEntity cur = level.getBlockEntity(boundCpu);
-			if (cur instanceof ComputerBlockEntity c && c.getKernel() instanceof MainframeKernel) {
-				return;
+			boolean stillValid = cur instanceof ComputerBlockEntity c
+					&& c.getKernel() instanceof MainframeKernel;
+
+			if (stillValid) {
+				// Also confirm the network hasn't been cut.
+				BlockPos liveCpu = ChannelNetworkManager.findCpuOnNetwork(level, worldPosition);
+				if (liveCpu != null && liveCpu.equals(boundCpu)) {
+					return;
+				}
+				// Network changed	unbind and retry.
+				unbind();
+			} else {
+				boundCpu = null;
 			}
-			boundCpu = null;
 		}
 
-		for (Direction d : Direction.values()) {
-			BlockPos np = worldPosition.relative(d);
-			BlockEntity be = level.getBlockEntity(np);
-			if (be instanceof ComputerBlockEntity cpu && cpu.getKernel() instanceof MainframeKernel kernel) {
-				boundCpu = np;
-				kernel.attachConsole(this);
-				setChanged();
-				return;
-			}
-		}
+		// Look for a CPU on the same cable network.
+		BlockPos cpuPos = ChannelNetworkManager.findCpuOnNetwork(level, worldPosition);
+		if (cpuPos == null) return;
+
+		BlockEntity be = level.getBlockEntity(cpuPos);
+		if (!(be instanceof ComputerBlockEntity cpu)) return;
+		if (!(cpu.getKernel() instanceof MainframeKernel kernel)) return;
+
+		boundCpu = cpuPos;
+		kernel.attachConsole(this);
+		setChanged();
 	}
 
 	/** Detach from the currently bound CPU, if any. */

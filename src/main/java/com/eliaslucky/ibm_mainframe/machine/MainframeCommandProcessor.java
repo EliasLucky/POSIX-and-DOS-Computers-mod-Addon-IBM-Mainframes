@@ -101,11 +101,11 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 	private static String helpText() {
 		return """
 			   IEE500I MAINFRAME OPERATOR COMMANDS
-				 START	   Read and run the next job from the card reader
+				 START     Read and run the next job from the card reader
 				 DEVICES   List channel-attached devices with unit addresses
 				 OUTPUT    View listings held because no printer is attached
 				 DSLIST    List catalogued datasets
-						   DSLIST MY.* to filter by prefix
+				           DSLIST MY.* to filter by prefix
 				 HELP	   Show this message
 			   """;
 	}
