@@ -44,10 +44,11 @@ public class ConsoleScreen extends Screen implements ConsoleScreenBase {
 	private static final ResourceLocation DOS_FONT = ResourceLocation.fromNamespaceAndPath("mc_dos", "ibm_vga_8x16");
 	private static final Style DOS_STYLE = Style.EMPTY.withFont(DOS_FONT);
 
-	private static final int BG		 = 0xFF000000;
-	private static final int FG		 = 0xFF33FF33;	 // phosphor green
-	private static final int INPUT	 = 0xFFFFFFFF;
-	private static final int HINT	 = 0xFF888888;
+	private static final int BG			 = 0xFF080808;	// near black
+	private static final int TEXT		 = 0xFF339933;	// muted green
+	private static final int PROMPT_TEXT = 0xFF44BB44;	// slightly brighter for prompt
+	private static final int SEPARATOR	 = 0xFF2A662A;	// dimmer for the line
+	private static final int HINT		 = 0xFF557755;	// dim hint text
 
 	private static final String PROMPT = "IPL> ";
 
@@ -98,9 +99,12 @@ public class ConsoleScreen extends Screen implements ConsoleScreenBase {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		g.fill(0, 0, this.width, this.height, BG);
 
-		int inputY = this.height - CELL_H * 2;
-		int usableHeight = inputY - MARGIN;
-		int maxVisible = Math.max(1, usableHeight / CELL_H);
+		int promptY    = this.height - CELL_H * 2;
+		int separatorY = promptY - 6;
+		int outputTop  = MARGIN;
+		int outputBot  = separatorY - 3;
+
+		int maxVisible = Math.max(1, (outputBot - outputTop) / CELL_H);
 
 		int total = lines.size();
 		int maxScroll = Math.max(0, total - maxVisible);
@@ -110,22 +114,25 @@ public class ConsoleScreen extends Screen implements ConsoleScreenBase {
 		int endIndex = total - scrollOffset;
 		int startIndex = Math.max(0, endIndex - maxVisible);
 
-		int y = MARGIN;
+		int y = outputTop;
 		for (int i = startIndex; i < endIndex; i++) {
-			drawDos(g, lines.get(i), MARGIN, y, FG);
+			// stop drawing if hit the separator.
+			if (y + CELL_H > outputBot) break;
+			drawDos(g, lines.get(i), MARGIN, y, TEXT);
 			y += CELL_H;
 		}
 
-		// Scroll indicator, right-aligned in the top row.
+		// Scroll hint, right-aligned above the separator.
 		if (scrollOffset > 0) {
-			String indicator = "^ " + scrollOffset + " above";
+			String indicator = "^ " + scrollOffset + " lines";
 			int ix = this.width - MARGIN - indicator.length() * CELL_W;
-			drawDos(g, indicator, ix, MARGIN, HINT);
+			drawDos(g, indicator, ix, outputTop - CELL_H, HINT);
 		}
 
-		// Input line, always at the bottom.
+		g.fill(MARGIN, separatorY, this.width - MARGIN, separatorY + 1, SEPARATOR);
+
 		String cursor = ((System.currentTimeMillis() / 500) % 2 == 0) ? "_" : " ";
-		drawDos(g, PROMPT + input + cursor, MARGIN, inputY, INPUT);
+		drawDos(g, PROMPT + input + cursor, MARGIN, promptY, PROMPT_TEXT);
 	}
 
 	private void drawDos(GuiGraphics g, String text, int x, int y, int color) {

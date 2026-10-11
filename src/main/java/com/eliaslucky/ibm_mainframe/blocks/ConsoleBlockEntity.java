@@ -96,12 +96,7 @@ public class ConsoleBlockEntity extends BlockEntity {
 			BlockPos np = worldPosition.relative(d);
 			BlockEntity be = level.getBlockEntity(np);
 			if (be instanceof ComputerBlockEntity cpu && cpu.getKernel() instanceof MainframeKernel kernel) {
-				ConsoleBlockEntity current = kernel.getConsole();
-				if (current != null && current != this) {
-					continue;
-				}
 				boundCpu = np;
-				// Tell the kernel to route its output here.
 				kernel.attachConsole(this);
 				setChanged();
 				return;

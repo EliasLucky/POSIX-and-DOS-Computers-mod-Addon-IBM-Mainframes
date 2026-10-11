@@ -69,8 +69,9 @@ public class MainframeKernel implements Kernel {
 	private DatasetCatalog catalog;
 	private boolean bootOk = false;
 	private boolean warnedNoPrinter = false;
-	private ConsoleBlockEntity console;
-
+	private final List<ConsoleBlockEntity> consoles = new ArrayList<>();
+	private boolean runningJob = false;
+	
 	public MainframeKernel(MainframeType type) {
 		this.type = type;
 	}
@@ -174,35 +175,33 @@ public class MainframeKernel implements Kernel {
 	 */
 	public void attachConsole(ConsoleBlockEntity c) {
 		if (c == null) return;
-		if (this.console == c) return;
-		// If a different console is already attached, detach it first.
-		if (this.console != null && this.console != c) {
-			this.console.detachFromKernel();
-		}
-		this.console = c;
+		consoles.removeIf(old -> old == null || old.isRemoved());
+		if (consoles.contains(c)) return;
+
+		consoles.add(c);
+		String model = c.consoleModel();
 		Set<String> accepted = type.acceptedConsoles();
-		if (!accepted.isEmpty() && !accepted.contains(c.consoleModel())) {
-			c.append("IEA910W " + c.consoleModel() + " NOT THE STANDARD CONSOLE FOR " + type.modelName());
+		if (!accepted.isEmpty() && !accepted.contains(model)) {
+			c.append("IEA910W " + model + " NOT THE STANDARD CONSOLE FOR "
+					+ type.modelName());
 			c.append("IEA911W CONSOLE WILL OPERATE WITH REDUCED FIDELITY");
 		}
-		
-		c.append("IEE101I CONSOLE ATTACHED -- " + devices.names().size() + " DEVICES");
+		c.append("IEE101I CONSOLE ATTACHED -- " + devices.names().size()
+				+ " DEVICES  (" + consoles.size() + " CONSOLE"
+				+ (consoles.size() == 1 ? "" : "S") + " ACTIVE)");
 
 		if (!pendingOperator.isEmpty()) {
 			c.appendLines(pendingOperator);
-			pendingOperator.clear();
 		}
 	}
 
 	/** Called by a console BE when it unbinds or is broken. */
 	public void detachConsole(ConsoleBlockEntity c) {
-		if (this.console == c) this.console = null;
+		consoles.remove(c);
 	}
 
-	public boolean hasConsole() { return console != null; }
-	/** The currently attached console, or null. Used by consoles to
-	 *	check whether the CPU is already claimed. */
-	public ConsoleBlockEntity getConsole() { return console; }
+	public boolean hasConsole() { return !consoles.isEmpty(); }
+	public List<ConsoleBlockEntity> consoles() { return List.copyOf(consoles); }
 
 	// --- Operator output --------------------------------------------------
 
@@ -212,13 +211,15 @@ public class MainframeKernel implements Kernel {
 	 */
 	private void toOperator(String line) {
 		if (line == null) return;
-		if (console != null) {
-			console.append(line);
-		} else {
+		if (consoles.isEmpty()) {
 			pendingOperator.add(line);
 			while (pendingOperator.size() > MAX_PENDING_LINES) {
 				pendingOperator.remove(0);
 			}
+			return;
+		}
+		for (ConsoleBlockEntity c : consoles) {
+			c.append(line);
 		}
 	}
 
@@ -265,8 +266,13 @@ public class MainframeKernel implements Kernel {
 	public String statusLine() {
 		StringBuilder sb = new StringBuilder();
 		sb.append(bootOk ? "IPL COMPLETE" : "OFF");
-		sb.append("  |	Devices: ").append(devices.all().size());
-		sb.append("  Console: ").append(console != null ? "yes" : "no");
+		sb.append("  |  Devices: ").append(devices.all().size());
+		sb.append("  Consoles: ");
+		if (consoles.isEmpty()) {
+			sb.append("none");
+		} else {
+			sb.append(consoles.size());
+		}
 		sb.append("  Printer: ").append(printer() != null ? "yes" : "no");
 		sb.append("  Reader: ").append(reader() != null ? "yes" : "no");
 		return sb.toString();
@@ -315,56 +321,71 @@ public class MainframeKernel implements Kernel {
 	 */
 	public String runNextJob() {
 		if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
+		if (runningJob) return "IEE500I SYSTEM BUSY -- A JOB IS ALREADY RUNNING";
 
 		ChannelDevice r = reader();
 		if (r == null) return "IEE600I NO CARD READER CONFIGURED";
 
-		// Phase 1: read cards until end of deck or the first bare "//".
-		List<String> cards = new ArrayList<>();
-		boolean sawJobCard = false;
+		runningJob = true;
+		try {
+			// Phase 1: read cards until end of deck or the first bare "//".
+			List<String> cards = new ArrayList<>();
+			boolean sawJobCard = false;
 
-		while (true) {
-			ChannelResult res = r.execute(new ChannelCommand(ChannelCommand.Op.READ, 80));
+			while (true) {
+				ChannelResult res = r.execute(
+						new ChannelCommand(ChannelCommand.Op.READ, 80));
 
-			if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
-			if (!res.success() || !res.hasData()) break;
+				if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
+				if (!res.success() || !res.hasData()) break;
 
-			String card = new String(res.data(), StandardCharsets.US_ASCII);
-			boolean jcl = card.length() >= 2
-					&& card.charAt(0) == '/' && card.charAt(1) == '/';
+				String card = new String(res.data(), StandardCharsets.US_ASCII);
+				boolean jcl = card.length() >= 2
+						&& card.charAt(0) == '/' && card.charAt(1) == '/';
 
-			if (jcl && card.trim().equals("//")) {
+				if (jcl && card.trim().equals("//")) {
+					cards.add(card);
+					break;
+				}
+				if (jcl && card.toUpperCase(Locale.ROOT).contains(" JOB ")) {
+					sawJobCard = true;
+				}
 				cards.add(card);
-				break;
 			}
-			if (jcl && card.toUpperCase(Locale.ROOT).contains(" JOB ")) {
-				sawJobCard = true;
+
+			if (cards.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
+			if (!sawJobCard)	 return "IEE602I INPUT DOES NOT BEGIN WITH A JOB CARD";
+
+			// Phase 2: parse and run.
+			JclParser.Result parsed = JclParser.parse(cards);
+			for (String w : parsed.warnings()) {
+				writeListing("IEE700W " + w);
 			}
-			cards.add(card);
+			if (parsed.jobs().isEmpty()) return "IEE603I JOB CARD REJECTED";
+
+			Job job = parsed.jobs().get(0);
+
+			// Broadcast job start to every attached console.
+			// OS/360 behaviour: IEF403I appears at every console that
+			// has the routing code enabled.
+			toOperator("");
+			toOperator("IEF403I JOB " + job.name() + " STARTED");
+
+			for (Job.Step step : job.steps()) {
+				executeStep(step);
+			}
+
+			catalog.flush();
+			catalog.clearTemp();
+
+			// Broadcast job end. Only the issuing console gets the
+			// summary string that runNextJob returns.
+			toOperator("IEF404I JOB " + job.name() + " ENDED");
+
+			return "IEE604I JOB " + job.name() + " COMPLETE";
+		} finally {
+			runningJob = false;
 		}
-
-		if (cards.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
-		if (!sawJobCard) return "IEE602I INPUT DOES NOT BEGIN WITH A JOB CARD";
-
-		// Phase 2: parse and run.
-		JclParser.Result parsed = JclParser.parse(cards);
-		for (String w : parsed.warnings()) {
-			writeListing("IEE700W " + w);
-		}
-		if (parsed.jobs().isEmpty()) return "IEE603I JOB CARD REJECTED";
-
-		Job job = parsed.jobs().get(0);
-		writeListing("");
-		writeListing("IEF142I JOB " + job.name() + " STARTED");
-
-		for (Job.Step step : job.steps()) {
-			executeStep(step);
-		}
-
-		catalog.flush();
-		catalog.clearTemp();
-		writeListing("IEF142I JOB " + job.name() + " ENDED");
-		return "IEE604I JOB " + job.name() + " COMPLETE";
 	}
 
 	private void executeStep(Job.Step step) {

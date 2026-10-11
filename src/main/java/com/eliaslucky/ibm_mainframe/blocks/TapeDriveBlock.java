@@ -65,14 +65,13 @@ public class TapeDriveBlock extends DirectionalHorizontalBlock implements Entity
 			return InteractionResult.PASS;
 		}
 		ItemStack held = player.getItemInHand(hand);
-		boolean sneaking = player.isShiftKeyDown();
 
-		if (sneaking && held.getItem() instanceof MagneticTapeItem) {
+		if (held.getItem() instanceof MagneticTapeItem) {
 			if (!level.isClientSide()) {
 				if (be.insertTape(held)) {
 					if (!player.getAbilities().instabuild) held.shrink(1);
 					player.displayClientMessage(
-							Component.literal("Tape loaded."), true);
+							Component.literal("Tape loaded: " + be.getVolumeSerial()), true);
 				} else {
 					player.displayClientMessage(
 							Component.literal("Drive already has a tape."), true);
@@ -81,7 +80,7 @@ public class TapeDriveBlock extends DirectionalHorizontalBlock implements Entity
 			return InteractionResult.sidedSuccess(level.isClientSide());
 		}
 
-		if (sneaking && held.isEmpty() && be.hasTape()) {
+		if (held.isEmpty() && be.hasTape()) {
 			if (!level.isClientSide()) {
 				ItemStack ejected = be.ejectTape();
 				if (!ejected.isEmpty() && !player.getInventory().add(ejected)) {
