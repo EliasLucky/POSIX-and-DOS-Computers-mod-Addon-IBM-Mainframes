@@ -38,9 +38,11 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		String arg = parts.length > 1 ? parts[1] : "";
 
 		return switch (cmd) {
-			case "START"   -> kernel.runNextJob();
+		case "SUBMIT" -> kernel.submitJob();
+		case "START"  -> kernel.runNextJob();
+		case "JOBS"   -> kernel.listJobs();
+		case "OUTPUT" -> kernel.viewOutput(arg);
 			case "DEVICES" -> listDevices(kernel);
-			case "OUTPUT"  -> dumpOrphanOutput(kernel);
 			case "DSLIST"  -> dslist(kernel,arg);
 			case "HELP"    -> helpText();
 			default		   -> "IEE300I COMMAND NOT RECOGNIZED: " + cmd;

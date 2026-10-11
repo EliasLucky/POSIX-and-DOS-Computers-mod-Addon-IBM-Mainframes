@@ -13,6 +13,7 @@ import com.eliaslucky.ibm_mainframe.jcl.JclParser;
 import com.eliaslucky.ibm_mainframe.jcl.Job;
 import com.eliaslucky.ibm_mainframe.jcl.JobContext;
 import com.eliaslucky.ibm_mainframe.jcl.ProgramRegistry;
+import com.eliaslucky.ibm_mainframe.jcl.SpoolQueue;
 import com.eliaslucky.ibm_mainframe.jcl.TapeLabels;
 import com.eliaslucky.ibm_mainframe.dataset.Dataset;
 import com.eliaslucky.ibm_mainframe.dataset.DatasetCatalog;
@@ -70,6 +71,7 @@ public class MainframeKernel implements Kernel {
 	private boolean bootOk = false;
 	private boolean warnedNoPrinter = false;
 	private final List<ConsoleBlockEntity> consoles = new ArrayList<>();
+	private final SpoolQueue spool = new SpoolQueue();
 	private boolean runningJob = false;
 	
 	public MainframeKernel(MainframeType type) {
@@ -316,95 +318,140 @@ public class MainframeKernel implements Kernel {
 	// --- Job execution ----------------------------------------------------
 
 	/**
-	 * Read the next job from the SYSIN reader and run it. Returns an
-	 * operator-facing summary.
+	 * Read one job from the SYSIN reader and enqueue it. Does not run
+	 * anything. Returns a short status string.
 	 */
-	public String runNextJob() {
-		if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
-		if (runningJob) return "IEE500I SYSTEM BUSY -- A JOB IS ALREADY RUNNING";
+	public String submitJob() {
+	    if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
+	    ChannelDevice r = reader();
+	    if (r == null) return "IEE600I NO CARD READER CONFIGURED";
 
-		ChannelDevice r = reader();
-		if (r == null) return "IEE600I NO CARD READER CONFIGURED";
+	    List<String> cards = new ArrayList<>();
+	    boolean sawJobCard = false;
+	    while (true) {
+	        ChannelResult res = r.execute(new ChannelCommand(ChannelCommand.Op.READ, 80));
+	        if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
+	        if (!res.success() || !res.hasData()) break;
+	        String card = new String(res.data(), StandardCharsets.US_ASCII);
+	        boolean jcl = card.length() >= 2
+	                && card.charAt(0) == '/' && card.charAt(1) == '/';
+	        if (jcl && card.trim().equals("//")) { cards.add(card); break; }
+	        if (jcl && card.toUpperCase(Locale.ROOT).contains(" JOB ")) sawJobCard = true;
+	        cards.add(card);
+	    }
 
-		runningJob = true;
-		try {
-			// Phase 1: read cards until end of deck or the first bare "//".
-			List<String> cards = new ArrayList<>();
-			boolean sawJobCard = false;
+	    if (cards.isEmpty())    return "IEE601I NO JOBS IN INPUT QUEUE";
+	    if (!sawJobCard)        return "IEE602I INPUT DOES NOT BEGIN WITH A JOB CARD";
 
-			while (true) {
-				ChannelResult res = r.execute(
-						new ChannelCommand(ChannelCommand.Op.READ, 80));
+	    // Peek the JOB card for name and classes.
+	    String jobCard = cards.get(0);
+	    String jobName = JclParser.jobNameFromCard(jobCard);
+	    String jobClass = JclParser.paramFromCard(jobCard, "CLASS");
+	    String msgClass = JclParser.paramFromCard(jobCard, "MSGCLASS");
 
-				if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
-				if (!res.success() || !res.hasData()) break;
+	    SpoolEntry entry = spool.submit(
+	            jobName == null ? "UNNAMED" : jobName,
+	            jobClass == null ? "A" : jobClass,
+	            msgClass == null ? "A" : msgClass,
+	            cards);
 
-				String card = new String(res.data(), StandardCharsets.US_ASCII);
-				boolean jcl = card.length() >= 2
-						&& card.charAt(0) == '/' && card.charAt(1) == '/';
-
-				if (jcl && card.trim().equals("//")) {
-					cards.add(card);
-					break;
-				}
-				if (jcl && card.toUpperCase(Locale.ROOT).contains(" JOB ")) {
-					sawJobCard = true;
-				}
-				cards.add(card);
-			}
-
-			if (cards.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
-			if (!sawJobCard)	 return "IEE602I INPUT DOES NOT BEGIN WITH A JOB CARD";
-
-			// Phase 2: parse and run.
-			JclParser.Result parsed = JclParser.parse(cards);
-			for (String w : parsed.warnings()) {
-				writeListing("IEE700W " + w);
-			}
-			if (parsed.jobs().isEmpty()) return "IEE603I JOB CARD REJECTED";
-
-			Job job = parsed.jobs().get(0);
-
-			// Broadcast job start to every attached console.
-			// OS/360 behaviour: IEF403I appears at every console that
-			// has the routing code enabled.
-			toOperator("");
-			toOperator("IEF403I JOB " + job.name() + " STARTED");
-
-			for (Job.Step step : job.steps()) {
-				executeStep(step);
-			}
-
-			catalog.flush();
-			catalog.clearTemp();
-
-			// Broadcast job end. Only the issuing console gets the
-			// summary string that runNextJob returns.
-			toOperator("IEF404I JOB " + job.name() + " ENDED");
-
-			return "IEE604I JOB " + job.name() + " COMPLETE";
-		} finally {
-			runningJob = false;
-		}
+	    return "IEE700I JOB " + entry.jobName() + " SUBMITTED AS " + entry.id();
 	}
 
-	private void executeStep(Job.Step step) {
-		ProgramRegistry.Program program = ProgramRegistry.get(step.program());
-		if (program == null) {
-			writeListing("IEF212I STEP " + step.name() + " -- PROGRAM "
-					+ step.program() + " NOT FOUND");
-			return;
-		}
-		writeListing("IEF142I STEP " + step.name() + " -- EXEC PGM=" + step.program());
+	/**
+	 * Take the next waiting entry from the spool and run it. Returns the
+	 * summary that goes back to the issuing console.
+	 */
+	public String runNextJob() {
+	    if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
+	    if (runningJob) return "IEE500I SYSTEM BUSY -- A JOB IS ALREADY RUNNING";
 
-		CursorContext ctx = new CursorContext(step);
-		try {
-			program.run(step, ctx);
-		}
-		finally {
-			ctx.closeTapes();
-			catalog.flush();
-		}
+	    Optional<SpoolEntry> next = spool.nextWaiting();
+	    if (next.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
+
+	    SpoolEntry entry = next.get();
+	    entry.setStatus(SpoolEntry.Status.ACTIVE);
+	    runningJob = true;
+
+	    try {
+	        JclParser.Result parsed = JclParser.parse(entry.deck());
+	        for (String w : parsed.warnings()) {
+	            entry.appendListing("IEE700W " + w);
+	            toOperator("IEE700W " + w);
+	        }
+	        if (parsed.jobs().isEmpty()) {
+	            entry.setStatus(SpoolEntry.Status.FAILED);
+	            entry.appendListing("IEE603I JOB CARD REJECTED");
+	            return "IEE603I JOB CARD REJECTED";
+	        }
+
+	        Job job = parsed.jobs().get(0);
+	        entry.appendListing("");
+	        entry.appendListing("IEF403I JOB " + job.name() + " STARTED");
+	        toOperator("IEF403I JOB " + job.name() + " STARTED");
+
+	        for (Job.Step step : job.steps()) {
+	            executeStep(step, entry);
+	        }
+
+	        catalog.flush();
+	        catalog.clearTemp();
+
+	        entry.appendListing("IEF404I JOB " + job.name() + " ENDED");
+	        entry.setStatus(SpoolEntry.Status.DONE);
+	        toOperator("IEF404I JOB " + job.name() + " ENDED");
+
+	        return "IEE604I JOB " + job.name() + " COMPLETE (ID " + entry.id() + ")";
+	    } finally {
+	        runningJob = false;
+	    }
+	}
+
+	/** List every spool entry. */
+	public String listJobs() {
+	    if (spool.size() == 0) return "IEE610I SPOOL IS EMPTY";
+	    StringBuilder sb = new StringBuilder("IEE611I SPOOL QUEUE:");
+	    for (SpoolEntry e : spool.all()) {
+	        sb.append(String.format("%n  %-4s  %-8s  %-9s  %s",
+	                e.id(), e.jobName(), e.status().name(),
+	                e.status() == SpoolEntry.Status.DONE
+	                        ? "(" + e.listing().size() + " lines)"
+	                        : ""));
+	    }
+	    return sb.toString();
+	}
+
+	/** Return a completed entry's listing, or an error. */
+	public String viewOutput(String id) {
+	    if (id == null || id.isBlank()) return "IEE612I SPECIFY A JOB ID";
+	    Optional<SpoolEntry> opt = spool.byId(id.trim().toUpperCase(Locale.ROOT));
+	    if (opt.isEmpty()) return "IEE613I NO JOB WITH ID " + id;
+	    SpoolEntry e = opt.get();
+	    if (e.listing().isEmpty()) return "IEE614I NO LISTING FOR JOB " + id;
+	    StringBuilder sb = new StringBuilder("IEE615I LISTING FOR " + e.jobName() + ":");
+	    for (String line : e.listing()) sb.append("\n").append(line);
+	    return sb.toString();
+	}
+
+	/** Route through writeListing for step output, but also to the entry. */
+	private void executeStep(Job.Step step, SpoolEntry entry) {
+	    ProgramRegistry.Program program = ProgramRegistry.get(step.program());
+	    if (program == null) {
+	        String msg = "IEF212I STEP " + step.name() + " -- PROGRAM "
+	                + step.program() + " NOT FOUND";
+	        entry.appendListing(msg);
+	        toOperator(msg);
+	        return;
+	    }
+	    entry.appendListing("IEF142I STEP " + step.name() + " -- EXEC PGM=" + step.program());
+
+	    CursorContext ctx = new CursorContext(step, entry);
+	    try {
+	        program.run(step, ctx);
+	    } finally {
+	        ctx.closeTapes();
+	        catalog.flush();
+	    }
 	}
 
 	// --- JobContext implementations ---------------------------------------
