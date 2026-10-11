@@ -64,7 +64,23 @@ public final class JclParser {
 		}
 		return new Result(jobs, warnings);
 	}
+	
+	/** Extract the job name from a JOB card, or null. */
+	public static String jobNameFromCard(String card) {
+	    String[] f = splitJcl(card);
+	    return (f.length >= 1 && !f[0].isEmpty()) ? f[0] : null;
+	}
 
+	/** Extract a parameter like CLASS=A from a JOB card, or null. */
+	public static String paramFromCard(String card, String key) {
+	    String[] f = splitJcl(card);
+	    String prefix = key.toUpperCase(Locale.ROOT) + "=";
+	    for (String s : f) {
+	        String up = s.toUpperCase(Locale.ROOT);
+	        if (up.startsWith(prefix)) return s.substring(prefix.length());
+	    }
+	    return null;
+	}
 	// --- Internals ---------------------------------------------------------
 
 	private static JobParse parseJob(List<String> cards, int start, List<String> warnings) {

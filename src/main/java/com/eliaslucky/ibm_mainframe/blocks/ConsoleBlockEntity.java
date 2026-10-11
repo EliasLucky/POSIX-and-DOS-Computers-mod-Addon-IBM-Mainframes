@@ -59,6 +59,25 @@ public class ConsoleBlockEntity extends BlockEntity {
 		return "UNKNOWN";
 	}
 
+	public Set<RouteCode> routes() {
+	    return Set.copyOf(routes);
+	}
+
+	public void setRoutes(Set<RouteCode> r) {
+	    routes.clear();
+	    if (r == null || r.isEmpty()) {
+	        routes.add(RouteCode.ALL);
+	    } else {
+	        routes.addAll(r);
+	    }
+	    setChanged();
+	}
+
+	/** True if this console should receive a message of the given class. */
+	public boolean accepts(RouteCode code) {
+	    return routes.contains(RouteCode.ALL) || routes.contains(code);
+	}
+
 	// --- Tick -------------------------------------------------------------
 
 	/**

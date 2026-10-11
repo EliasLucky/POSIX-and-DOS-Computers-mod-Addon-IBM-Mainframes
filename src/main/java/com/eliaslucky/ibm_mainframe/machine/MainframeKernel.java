@@ -13,6 +13,7 @@ import com.eliaslucky.ibm_mainframe.jcl.JclParser;
 import com.eliaslucky.ibm_mainframe.jcl.Job;
 import com.eliaslucky.ibm_mainframe.jcl.JobContext;
 import com.eliaslucky.ibm_mainframe.jcl.ProgramRegistry;
+import com.eliaslucky.ibm_mainframe.jcl.SpoolEntry;
 import com.eliaslucky.ibm_mainframe.jcl.SpoolQueue;
 import com.eliaslucky.ibm_mainframe.jcl.TapeLabels;
 import com.eliaslucky.ibm_mainframe.dataset.Dataset;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -247,7 +249,28 @@ public class MainframeKernel implements Kernel {
 		p.execute(new ChannelCommand(
 				ChannelCommand.Op.WRITE, bytes.length, false, bytes));
 	}
-
+	/**
+	 * Entry point for commands issued at a specific console.
+	 *
+	 * <p>Runs before the general command processor so that
+	 * console-local commands (currently {@code ROUTE}) can be
+	 * intercepted. Everything not recognized here falls through to
+	 * {@link MainframeCommandProcessor#process(ComputerBlockEntity, String, CommandOrigin)}.
+	 *
+	 * @param cpu     the CPU the console is bound to
+	 * @param console the console that issued the command
+	 * @param line    the raw command line
+	 * @param origin  origin tag built by the packet handler
+	 * @return the response string, or {@code ""} for none
+	 */
+	public String consoleCommand(ComputerBlockEntity cpu, ConsoleBlockEntity console, String line, CommandOrigin origin) {
+	    String upper = line.trim().toUpperCase(Locale.ROOT);
+	    if (upper.equals("ROUTE") || upper.startsWith("ROUTE ")) {
+	        String arg = upper.length() > 5 ? line.trim().substring(5) : "";
+	        return setRoutesFromCommand(origin, arg);
+	    }
+	    return type.commandProcessor().process(cpu, line, origin);
+	}
 	/**
 	 * Take and clear the pending-operator buffer. Used by the OUTPUT
 	 * command when the console is not yet attached.
@@ -318,140 +341,135 @@ public class MainframeKernel implements Kernel {
 	// --- Job execution ----------------------------------------------------
 
 	/**
-	 * Read one job from the SYSIN reader and enqueue it. Does not run
-	 * anything. Returns a short status string.
-	 */
-	public String submitJob() {
-		if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
-		ChannelDevice r = reader();
-		if (r == null) return "IEE600I NO CARD READER CONFIGURED";
-
-		List<String> cards = new ArrayList<>();
-		boolean sawJobCard = false;
-		while (true) {
-			ChannelResult res = r.execute(new ChannelCommand(ChannelCommand.Op.READ, 80));
-			if (res.status() == ChannelDevice.ChannelStatus.UNIT_EXCEPTION) break;
-			if (!res.success() || !res.hasData()) break;
-			String card = new String(res.data(), StandardCharsets.US_ASCII);
-			boolean jcl = card.length() >= 2
-					&& card.charAt(0) == '/' && card.charAt(1) == '/';
-			if (jcl && card.trim().equals("//")) { cards.add(card); break; }
-			if (jcl && card.toUpperCase(Locale.ROOT).contains(" JOB ")) sawJobCard = true;
-			cards.add(card);
-		}
-
-		if (cards.isEmpty())	return "IEE601I NO JOBS IN INPUT QUEUE";
-		if (!sawJobCard)		return "IEE602I INPUT DOES NOT BEGIN WITH A JOB CARD";
-
-		// Peek the JOB card for name and classes.
-		String jobCard = cards.get(0);
-		String jobName = JclParser.jobNameFromCard(jobCard);
-		String jobClass = JclParser.paramFromCard(jobCard, "CLASS");
-		String msgClass = JclParser.paramFromCard(jobCard, "MSGCLASS");
-
-		SpoolEntry entry = spool.submit(
-				jobName == null ? "UNNAMED" : jobName,
-				jobClass == null ? "A" : jobClass,
-				msgClass == null ? "A" : msgClass,
-				cards);
-
-		return "IEE700I JOB " + entry.jobName() + " SUBMITTED AS " + entry.id();
-	}
-
-	/**
 	 * Take the next waiting entry from the spool and run it. Returns the
 	 * summary that goes back to the issuing console.
 	 */
 	public String runNextJob() {
-		if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
-		if (runningJob) return "IEE500I SYSTEM BUSY -- A JOB IS ALREADY RUNNING";
+	    if (!bootOk) return "IEE100I SYSTEM NOT IPL'D";
+	    if (runningJob) return "IEE500I SYSTEM BUSY -- A JOB IS ALREADY RUNNING";
 
-		Optional<SpoolEntry> next = spool.nextWaiting();
-		if (next.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
+	    Optional<SpoolEntry> next = spool.nextWaiting();
+	    if (next.isEmpty()) return "IEE601I NO JOBS IN INPUT QUEUE";
 
-		SpoolEntry entry = next.get();
-		entry.setStatus(SpoolEntry.Status.ACTIVE);
-		runningJob = true;
+	    SpoolEntry entry = next.get();
+	    entry.setStatus(SpoolEntry.Status.ACTIVE);
+	    runningJob = true;
 
-		try {
-			JclParser.Result parsed = JclParser.parse(entry.deck());
-			for (String w : parsed.warnings()) {
-				entry.appendListing("IEE700W " + w);
-				toOperator("IEE700W " + w);
-			}
-			if (parsed.jobs().isEmpty()) {
-				entry.setStatus(SpoolEntry.Status.FAILED);
-				entry.appendListing("IEE603I JOB CARD REJECTED");
-				return "IEE603I JOB CARD REJECTED";
-			}
+	    try {
+	        JclParser.Result parsed = JclParser.parse(entry.deck());
+	        for (String w : parsed.warnings()) {
+	            entry.appendListing("IEE700W " + w);
+	            toOperator("IEE700W " + w);
+	        }
+	        if (parsed.jobs().isEmpty()) {
+	            entry.setStatus(SpoolEntry.Status.FAILED);
+	            entry.appendListing("IEE603I JOB CARD REJECTED");
+	            return "IEE603I JOB CARD REJECTED";
+	        }
 
-			Job job = parsed.jobs().get(0);
-			entry.appendListing("");
-			entry.appendListing("IEF403I JOB " + job.name() + " STARTED");
-			toOperator("IEF403I JOB " + job.name() + " STARTED");
+	        Job job = parsed.jobs().get(0);
+	        entry.appendListing("");
+	        entry.appendListing("IEF403I JOB " + job.name() + " STARTED");
+	        toOperator("IEF403I JOB " + job.name() + " STARTED");
 
-			for (Job.Step step : job.steps()) {
-				executeStep(step, entry);
-			}
+	        for (Job.Step step : job.steps()) {
+	            executeStep(step, entry);
+	        }
 
-			catalog.flush();
-			catalog.clearTemp();
+	        catalog.flush();
+	        catalog.clearTemp();
 
-			entry.appendListing("IEF404I JOB " + job.name() + " ENDED");
-			entry.setStatus(SpoolEntry.Status.DONE);
-			toOperator("IEF404I JOB " + job.name() + " ENDED");
+	        entry.appendListing("IEF404I JOB " + job.name() + " ENDED");
+	        entry.setStatus(SpoolEntry.Status.DONE);
+	        toOperator("IEF404I JOB " + job.name() + " ENDED");
 
-			return "IEE604I JOB " + job.name() + " COMPLETE (ID " + entry.id() + ")";
-		} finally {
-			runningJob = false;
-		}
+	        return "IEE604I JOB " + job.name() + " COMPLETE (ID " + entry.id() + ")";
+	    } finally {
+	        runningJob = false;
+	    }
 	}
 
 	/** List every spool entry. */
 	public String listJobs() {
-		if (spool.size() == 0) return "IEE610I SPOOL IS EMPTY";
-		StringBuilder sb = new StringBuilder("IEE611I SPOOL QUEUE:");
-		for (SpoolEntry e : spool.all()) {
-			sb.append(String.format("%n  %-4s  %-8s  %-9s  %s",
-					e.id(), e.jobName(), e.status().name(),
-					e.status() == SpoolEntry.Status.DONE
-							? "(" + e.listing().size() + " lines)"
-							: ""));
-		}
-		return sb.toString();
+	    if (spool.size() == 0) return "IEE610I SPOOL IS EMPTY";
+	    StringBuilder sb = new StringBuilder("IEE611I SPOOL QUEUE:");
+	    for (SpoolEntry e : spool.all()) {
+	        sb.append(String.format("%n  %-4s  %-8s  %-9s  %s",
+	                e.id(), e.jobName(), e.status().name(),
+	                e.status() == SpoolEntry.Status.DONE
+	                        ? "(" + e.listing().size() + " lines)"
+	                        : ""));
+	    }
+	    return sb.toString();
 	}
 
 	/** Return a completed entry's listing, or an error. */
 	public String viewOutput(String id) {
-		if (id == null || id.isBlank()) return "IEE612I SPECIFY A JOB ID";
-		Optional<SpoolEntry> opt = spool.byId(id.trim().toUpperCase(Locale.ROOT));
-		if (opt.isEmpty()) return "IEE613I NO JOB WITH ID " + id;
-		SpoolEntry e = opt.get();
-		if (e.listing().isEmpty()) return "IEE614I NO LISTING FOR JOB " + id;
-		StringBuilder sb = new StringBuilder("IEE615I LISTING FOR " + e.jobName() + ":");
-		for (String line : e.listing()) sb.append("\n").append(line);
-		return sb.toString();
+	    if (id == null || id.isBlank()) return "IEE612I SPECIFY A JOB ID";
+	    Optional<SpoolEntry> opt = spool.byId(id.trim().toUpperCase(Locale.ROOT));
+	    if (opt.isEmpty()) return "IEE613I NO JOB WITH ID " + id;
+	    SpoolEntry e = opt.get();
+	    if (e.listing().isEmpty()) return "IEE614I NO LISTING FOR JOB " + id;
+	    StringBuilder sb = new StringBuilder("IEE615I LISTING FOR " + e.jobName() + ":");
+	    for (String line : e.listing()) sb.append("\n").append(line);
+	    return sb.toString();
+	}
+	
+	public String setRoutesFromCommand(CommandOrigin origin, String arg) {
+	    if (origin == null || !origin.isConsole() || origin.source() == null) {
+	        return "IEE620I ROUTE IS ONLY VALID AT A CONSOLE";
+	    }
+	    ConsoleBlockEntity console = origin.source();
+
+	    String trimmed = arg == null ? "" : arg.trim();
+
+	    if (trimmed.isEmpty()) {
+	        StringBuilder sb = new StringBuilder("IEE621I ROUTES: ");
+	        for (RouteCode r : console.routes()) sb.append(r).append(' ');
+	        return sb.toString();
+	    }
+
+	    if (trimmed.equals("*") || trimmed.equalsIgnoreCase("ALL")) {
+	        console.setRoutes(RouteCode.MASTER);
+	        return "IEE622I ROUTES SET TO ALL";
+	    }
+
+	    Set<RouteCode> newRoutes = new HashSet<>();
+	    for (String token : trimmed.split("[\\s,]+")) {
+	        if (token.isEmpty()) continue;
+	        try {
+	            newRoutes.add(RouteCode.valueOf(token.toUpperCase(Locale.ROOT)));
+	        } catch (IllegalArgumentException e) {
+	            return "IEE623I UNKNOWN ROUTE CODE: " + token;
+	        }
+	    }
+	    if (newRoutes.isEmpty()) return "IEE624I NO ROUTE CODES RECOGNIZED";
+
+	    console.setRoutes(newRoutes);
+	    StringBuilder sb = new StringBuilder("IEE625I ROUTES SET TO: ");
+	    for (RouteCode r : newRoutes) sb.append(r).append(' ');
+	    return sb.toString();
 	}
 
 	/** Route through writeListing for step output, but also to the entry. */
 	private void executeStep(Job.Step step, SpoolEntry entry) {
-		ProgramRegistry.Program program = ProgramRegistry.get(step.program());
-		if (program == null) {
-			String msg = "IEF212I STEP " + step.name() + " -- PROGRAM "
-					+ step.program() + " NOT FOUND";
-			entry.appendListing(msg);
-			toOperator(msg);
-			return;
-		}
-		entry.appendListing("IEF142I STEP " + step.name() + " -- EXEC PGM=" + step.program());
+	    ProgramRegistry.Program program = ProgramRegistry.get(step.program());
+	    if (program == null) {
+	        String msg = "IEF212I STEP " + step.name() + " -- PROGRAM "
+	                + step.program() + " NOT FOUND";
+	        entry.appendListing(msg);
+	        toOperator(msg);
+	        return;
+	    }
+	    entry.appendListing("IEF142I STEP " + step.name() + " -- EXEC PGM=" + step.program());
 
-		CursorContext ctx = new CursorContext(step, entry);
-		try {
-			program.run(step, ctx);
-		} finally {
-			ctx.closeTapes();
-			catalog.flush();
-		}
+	    CursorContext ctx = new CursorContext(step, entry);
+	    try {
+	        program.run(step, ctx);
+	    } finally {
+	        ctx.closeTapes();
+	        catalog.flush();
+	    }
 	}
 
 	// --- JobContext implementations ---------------------------------------
@@ -571,7 +589,7 @@ public class MainframeKernel implements Kernel {
 			Job.Dd dd = step.dds().get(key);
 
 			if (dd == null || dd.kind() == Job.Dd.Kind.SYSOUT) {
-				writeListing(record);
+				entry.appendListing(record);
 				return;
 			}
 

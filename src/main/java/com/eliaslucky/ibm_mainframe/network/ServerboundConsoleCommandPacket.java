@@ -43,7 +43,9 @@ public class ServerboundConsoleCommandPacket {
 			if (!(player.serverLevel().getBlockEntity(pos) instanceof ConsoleBlockEntity console)) {
 				return;
 			}
-
+			if (!console.isUsed() || !player.getUUID().equals(console.getActiveUser())) {
+	            return;
+	        }
 			if (!console.isBound()) {
 				console.append("IEE100I NO PROCESSOR ATTACHED -- RIGHT-CLICK THE MAINFRAME TO IPL");
 				ModMessages.sendToPlayer(
@@ -62,14 +64,17 @@ public class ServerboundConsoleCommandPacket {
 			}
 
 			console.append("IPL> " + command);
+			
+			CommandOrigin origin = CommandOrigin.console(console);
 
-			// Process. If the kernel isn't ready yet, boot the CPU first.
-			if (cpu.getKernel() == null) {
-				cpu.powerOn();
-				console.append("IEA000I IPL STARTED");
+			String response;
+			if (cpu.getKernel() instanceof MainframeKernel mk) {
+				response = mk.consoleCommand(cpu, console, command, origin);
+			} else {
+				// Not a mainframe.
+				response = cpu.processCommand(command);
 			}
-
-			String response = cpu.processCommand(command);
+		
 			if (response != null && !response.isEmpty()) {
 				for (String line : response.split("\n", -1)) console.append(line);
 			}

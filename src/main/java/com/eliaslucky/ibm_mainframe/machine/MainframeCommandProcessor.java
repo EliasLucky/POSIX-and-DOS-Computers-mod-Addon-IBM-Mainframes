@@ -24,6 +24,19 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 
 	@Override
 	public String process(ComputerBlockEntity computer, String rawInput) {
+		return process(computer, rawInput, CommandOrigin.TERMINAL);
+	}
+
+	/**
+	 * Process a command with an explicit origin. Called by the
+	 * console packet handler; not part of the base mod's
+	 * {@code ICommandProcessor} contract.
+	 *
+	 * <p>Currently the origin is only used to satisfy the
+	 * {@code ROUTE} command, which is valid only at a console. All
+	 * other commands ignore it.
+	 */
+	public String process(ComputerBlockEntity computer, String rawInput, CommandOrigin origin) {
 		String input = rawInput == null ? "" : rawInput.trim();
 		if (input.isEmpty()) return "";
 
@@ -38,13 +51,14 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 		String arg = parts.length > 1 ? parts[1] : "";
 
 		return switch (cmd) {
-		case "SUBMIT" -> kernel.submitJob();
-		case "START"  -> kernel.runNextJob();
-		case "JOBS"   -> kernel.listJobs();
-		case "OUTPUT" -> kernel.viewOutput(arg);
-			case "DEVICES" -> listDevices(kernel);
-			case "DSLIST"  -> dslist(kernel,arg);
-			case "HELP"    -> helpText();
+		case "START"   -> kernel.runNextJob();
+		case "SUBMIT"  -> kernel.submitJob();
+		case "JOBS"    -> kernel.listJobs();
+		case "OUTPUT"  -> kernel.viewOutput(arg);
+		case "DEVICES" -> listDevices(kernel);
+		case "DSLIST"  -> dslist(kernel, arg);
+		case "ROUTE"   -> kernel.setRoutesFromCommand(origin, arg);
+		case "HELP"    -> helpText();
 			default		   -> "IEE300I COMMAND NOT RECOGNIZED: " + cmd;
 		};
 	}
@@ -59,16 +73,6 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 			  .append("  ").append(String.format("%-8s", e.name()))
 			  .append("  ").append(e.device().description());
 		}
-		return sb.toString();
-	}
-
-	private static String dumpOrphanOutput(MainframeKernel kernel) {
-		if (!kernel.hasOrphanOutput()) return "IEE606I NO HELD OUTPUT";
-
-		var lines = kernel.drainOrphanOutput();
-		StringBuilder sb = new StringBuilder("IEE607I HELD LISTING -- ")
-				.append(lines.size()).append(" LINES");
-		for (String l : lines) sb.append("\n").append(l);
 		return sb.toString();
 	}
 
@@ -102,13 +106,15 @@ public class MainframeCommandProcessor implements ICommandProcessor {
 
 	private static String helpText() {
 		return """
-			   IEE500I MAINFRAME OPERATOR COMMANDS
-				 START	   Read and run the next job from the card reader
-				 DEVICES   List channel-attached devices with unit addresses
-				 OUTPUT    View listings held because no printer is attached
-				 DSLIST    List catalogued datasets
-						   DSLIST MY.* to filter by prefix
-				 HELP	   Show this message
+               IEE500I MAINFRAME OPERATOR COMMANDS
+                 SUBMIT    Read the next deck and enqueue it
+                 START     Run the next queued job
+                 JOBS      List the spool queue
+                 OUTPUT    View a completed job's listing (OUTPUT <id>)
+                 DEVICES   List channel-attached devices
+                 DSLIST    List catalogued datasets (DSLIST MY.* to filter)
+                 ROUTE     Set console message routing (ROUTE IEA IEF)
+                 HELP      Show this message
 			   """;
 	}
 
