@@ -4,15 +4,12 @@ import com.eliaslucky.ibm_mainframe.machine.MainframeKernel;
 import com.eliaslucky.ibm_mainframe.AllBlockEntities;
 import com.eliaslucky.ibm_mainframe.channel.ChannelNetworkManager;
 import com.eliaslucky.mc_dos.blocks.computer.ComputerBlockEntity;
-import com.eliaslucky.mc_dos.api.hardware.Kernel;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
